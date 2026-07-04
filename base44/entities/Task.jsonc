@@ -1,0 +1,61 @@
+{
+  "name": "Task",
+  "type": "object",
+  "properties": {
+    "title": {
+      "type": "string"
+    },
+    "description": {
+      "type": "string"
+    },
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "assigned_to": {
+      "type": "string"
+    },
+    "task_type": {
+      "type": "string",
+      "enum": [
+        "Seguimiento",
+        "Confirmaci\u00f3n de visita",
+        "Reactivaci\u00f3n",
+        "Contacto prioritario",
+        "Enviar propiedades",
+        "Llamada"
+      ]
+    },
+    "due_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pendiente",
+        "Completada",
+        "Vencida"
+      ],
+      "default": "Pendiente"
+    },
+    "priority": {
+      "type": "string",
+      "enum": [
+        "Alta",
+        "Media",
+        "Baja"
+      ],
+      "default": "Media"
+    }
+  },
+  "required": [
+    "title",
+    "task_type"
+  ]
+}

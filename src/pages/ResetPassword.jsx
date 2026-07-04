@@ -1,114 +1,43 @@
-import React, { useState } from "react";
-import { Link, useSearchParams } from "react-router-dom";
-import { base44 } from "@/api/base44Client";
-import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Lock, Loader2, AlertTriangle } from "lucide-react";
-import AuthLayout from "@/components/AuthLayout";
+import React, { useState } from 'react';
+import { base44 } from '@/api/base44Client';
+import LatitudLogo from '@/components/LatitudLogo';
 
 export default function ResetPassword() {
-  const [searchParams] = useSearchParams();
-  const resetToken = searchParams.get("token");
-
-  const [newPassword, setNewPassword] = useState("");
-  const [confirmPassword, setConfirmPassword] = useState("");
-  const [error, setError] = useState("");
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const [password, setPassword] = useState('');
+  const [confirm, setConfirm] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    setError("");
-    if (newPassword !== confirmPassword) {
-      setError("Passwords do not match");
-      return;
-    }
+    if (password !== confirm) { setError('Las contraseñas no coinciden.'); return; }
+    setError('');
     setLoading(true);
     try {
-      await base44.auth.resetPassword({ resetToken, newPassword });
-      window.location.href = "/login";
+      await base44.auth.resetPassword({ resetToken: token, newPassword: password });
+      window.location.href = '/login';
     } catch (err) {
-      setError(err.message || "Failed to reset password");
-    } finally {
-      setLoading(false);
-    }
+      setError('Error al restablecer contraseña. El enlace puede haber expirado.');
+    } finally { setLoading(false); }
   };
 
-  if (!resetToken) {
-    return (
-      <AuthLayout
-        icon={AlertTriangle}
-        title="Invalid reset link"
-        subtitle="This password reset link is missing or invalid"
-        footer={
-          <Link to="/forgot-password" className="text-primary font-medium hover:underline">
-            Request a new link
-          </Link>
-        }
-      >
-        <p className="text-sm text-foreground text-center">
-          The link you used appears to be incomplete. Please request a new password reset email.
-        </p>
-      </AuthLayout>
-    );
-  }
-
   return (
-    <AuthLayout
-      icon={Lock}
-      title="New password"
-      subtitle="Enter your new password below"
-    >
-      {error && (
-        <div className="mb-4 p-3 rounded-lg bg-destructive/10 text-destructive text-sm">
-          {error}
-        </div>
-      )}
-      <form onSubmit={handleSubmit} className="space-y-4">
-        <div className="space-y-2">
-          <Label htmlFor="password">New Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="password"
-              type="password"
-              autoComplete="new-password"
-              autoFocus
-              placeholder="••••••••"
-              value={newPassword}
-              onChange={(e) => setNewPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
-          </div>
-        </div>
-        <div className="space-y-2">
-          <Label htmlFor="confirm">Confirm Password</Label>
-          <div className="relative">
-            <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" aria-hidden="true" />
-            <Input
-              id="confirm"
-              type="password"
-              autoComplete="new-password"
-              placeholder="••••••••"
-              value={confirmPassword}
-              onChange={(e) => setConfirmPassword(e.target.value)}
-              className="pl-10 h-12"
-              required
-            />
-          </div>
-        </div>
-        <Button type="submit" className="w-full h-12 font-medium" disabled={loading}>
-          {loading ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Resetting...
-            </>
-          ) : (
-            "Reset password"
-          )}
-        </Button>
-      </form>
-    </AuthLayout>
+    <div className="min-h-screen bg-latitud-black flex flex-col items-center justify-center px-6">
+      <div className="w-full max-w-sm">
+        <div className="flex justify-center mb-10"><LatitudLogo variant="white" size="lg" /></div>
+        <h2 className="font-heading text-2xl text-white text-center mb-2">Nueva contraseña</h2>
+        <p className="text-white/50 text-sm text-center mb-8">Ingresa tu nueva contraseña.</p>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <input type="password" value={password} onChange={e => setPassword(e.target.value)} placeholder="Nueva contraseña" className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:border-latitud-orange focus:outline-none" />
+          <input type="password" value={confirm} onChange={e => setConfirm(e.target.value)} placeholder="Confirmar contraseña" className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 focus:border-latitud-orange focus:outline-none" />
+          {error && <p className="text-red-400 text-sm">{error}</p>}
+          <button type="submit" disabled={loading || !password || !confirm} className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl disabled:opacity-50 flex items-center justify-center">
+            {loading ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : 'Restablecer contraseña'}
+          </button>
+        </form>
+      </div>
+    </div>
   );
 }

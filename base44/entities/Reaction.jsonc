@@ -1,0 +1,43 @@
+{
+  "name": "Reaction",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "reaction_type": {
+      "type": "string",
+      "enum": [
+        "like",
+        "dislike",
+        "visit_request"
+      ]
+    },
+    "dislike_reason": {
+      "type": "string"
+    },
+    "property_title": {
+      "type": "string"
+    },
+    "property_zone": {
+      "type": "string"
+    },
+    "property_city": {
+      "type": "string"
+    },
+    "property_price": {
+      "type": "number"
+    },
+    "property_type": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_id",
+    "property_id",
+    "reaction_type"
+  ]
+}

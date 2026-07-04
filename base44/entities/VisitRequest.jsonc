@@ -1,0 +1,48 @@
+{
+  "name": "VisitRequest",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_whatsapp": {
+      "type": "string"
+    },
+    "property_id": {
+      "type": "string"
+    },
+    "property_title": {
+      "type": "string"
+    },
+    "preferred_day": {
+      "type": "string"
+    },
+    "preferred_time": {
+      "type": "string"
+    },
+    "comment": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Pendiente",
+        "Confirmada",
+        "Completada",
+        "Cancelada"
+      ],
+      "default": "Pendiente"
+    },
+    "advisor_name": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "client_id",
+    "property_id",
+    "property_title"
+  ]
+}

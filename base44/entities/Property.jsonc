@@ -1,0 +1,176 @@
+{
+  "name": "Property",
+  "type": "object",
+  "properties": {
+    "easybroker_property_id": {
+      "type": "string"
+    },
+    "internal_code": {
+      "type": "string"
+    },
+    "title": {
+      "type": "string"
+    },
+    "operation_type": {
+      "type": "string",
+      "enum": [
+        "Venta",
+        "Renta"
+      ]
+    },
+    "property_type": {
+      "type": "string",
+      "enum": [
+        "Casa",
+        "Departamento",
+        "Terreno",
+        "Penthouse",
+        "Villa",
+        "Local Comercial"
+      ]
+    },
+    "price": {
+      "type": "number"
+    },
+    "currency": {
+      "type": "string",
+      "enum": [
+        "MXN",
+        "USD"
+      ],
+      "default": "MXN"
+    },
+    "city": {
+      "type": "string"
+    },
+    "zone": {
+      "type": "string"
+    },
+    "private_address": {
+      "type": "string"
+    },
+    "latitude": {
+      "type": "number"
+    },
+    "longitude": {
+      "type": "number"
+    },
+    "bedrooms": {
+      "type": "number"
+    },
+    "bathrooms": {
+      "type": "number"
+    },
+    "half_bathrooms": {
+      "type": "number"
+    },
+    "parking_spaces": {
+      "type": "number"
+    },
+    "land_area": {
+      "type": "number"
+    },
+    "construction_area": {
+      "type": "number"
+    },
+    "year_built": {
+      "type": "number"
+    },
+    "description": {
+      "type": "string"
+    },
+    "value_phrase": {
+      "type": "string"
+    },
+    "amenities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "photos": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "video_url": {
+      "type": "string"
+    },
+    "virtual_tour_url": {
+      "type": "string"
+    },
+    "brochure_url": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "Disponible",
+        "Apartada",
+        "Vendida",
+        "Rentada",
+        "Pausada"
+      ],
+      "default": "Disponible"
+    },
+    "last_sync_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "advisor_name": {
+      "type": "string"
+    },
+    "advisor_phone": {
+      "type": "string"
+    },
+    "tags": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "exclusivity": {
+      "type": "boolean",
+      "default": false
+    },
+    "shared_commission": {
+      "type": "boolean",
+      "default": false
+    },
+    "visible_to_clients": {
+      "type": "boolean",
+      "default": true
+    },
+    "architectural_style": {
+      "type": "string"
+    },
+    "investment_profile": {
+      "type": "string"
+    },
+    "near_beach": {
+      "type": "boolean",
+      "default": false
+    },
+    "near_golf": {
+      "type": "boolean",
+      "default": false
+    },
+    "has_security": {
+      "type": "boolean",
+      "default": false
+    },
+    "rental_potential": {
+      "type": "boolean",
+      "default": false
+    }
+  },
+  "required": [
+    "title",
+    "operation_type",
+    "property_type",
+    "price",
+    "city",
+    "zone"
+  ]
+}

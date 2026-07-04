@@ -1,0 +1,112 @@
+{
+  "name": "Client",
+  "type": "object",
+  "properties": {
+    "name": {
+      "type": "string"
+    },
+    "whatsapp": {
+      "type": "string"
+    },
+    "email": {
+      "type": "string"
+    },
+    "city": {
+      "type": "string"
+    },
+    "lead_source": {
+      "type": "string",
+      "default": "Latitud Match"
+    },
+    "assigned_advisor": {
+      "type": "string"
+    },
+    "budget_range": {
+      "type": "string"
+    },
+    "commercial_stage": {
+      "type": "string",
+      "enum": [
+        "Nuevo",
+        "Onboarding completado",
+        "Explorando",
+        "Interesado",
+        "Visita solicitada",
+        "Negociaci\u00f3n",
+        "Cerrado",
+        "Perdido"
+      ],
+      "default": "Nuevo"
+    },
+    "estimated_purchase_date": {
+      "type": "string"
+    },
+    "payment_method": {
+      "type": "string"
+    },
+    "looking_for": {
+      "type": "string"
+    },
+    "property_type_wanted": {
+      "type": "string"
+    },
+    "favorite_zones": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "important_features": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "bedrooms_wanted": {
+      "type": "string"
+    },
+    "intent_score": {
+      "type": "string",
+      "enum": [
+        "Alta intenci\u00f3n",
+        "Intenci\u00f3n media",
+        "Explorando"
+      ],
+      "default": "Explorando"
+    },
+    "liked_count": {
+      "type": "number",
+      "default": 0
+    },
+    "disliked_count": {
+      "type": "number",
+      "default": 0
+    },
+    "visit_requests_count": {
+      "type": "number",
+      "default": 0
+    },
+    "last_activity_date": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "advisor_notes": {
+      "type": "string"
+    },
+    "has_advisor": {
+      "type": "boolean",
+      "default": false
+    },
+    "onboarding_completed": {
+      "type": "boolean",
+      "default": false
+    },
+    "session_token": {
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "whatsapp"
+  ]
+}
