@@ -1,12 +1,13 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Calendar, ClipboardList, LogOut, Menu, X } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Calendar, ClipboardList, LogOut, Menu, X, BarChart3 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
   { label: 'Clientes', path: '/admin/clients', icon: Users },
+  { label: 'Inteligencia', path: '/admin/intelligence', icon: BarChart3 },
   { label: 'Propiedades', path: '/admin/properties', icon: Building2 },
   { label: 'Visitas', path: '/admin/visits', icon: Calendar },
   { label: 'Tareas', path: '/admin/tasks', icon: ClipboardList },

@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { motion } from 'framer-motion';
-import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Phone } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
+import VisitModal from '@/components/VisitModal';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -11,6 +11,7 @@ export default function PropertyDetail() {
   const [property, setProperty] = useState(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [loading, setLoading] = useState(true);
+  const [showVisit, setShowVisit] = useState(false);
 
   useEffect(() => {
     base44.entities.Property.get(id).then(p => {
@@ -36,17 +37,19 @@ export default function PropertyDetail() {
   }
 
   const photos = property.photos || [];
+  const clientId = localStorage.getItem('latitud_client_id');
+  const clientName = localStorage.getItem('latitud_client_name');
 
   return (
     <div className="min-h-screen bg-white pb-24">
       {/* Photo gallery */}
-      <div className="relative h-[50vh]">
+      <div className="relative h-[55vh]">
         <img 
           src={photos[photoIndex] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'}
           alt={property.title}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/40 to-transparent" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
         
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-6">
@@ -103,7 +106,7 @@ export default function PropertyDetail() {
 
           {/* Location */}
           <div className="flex items-center gap-1 text-latitud-gray text-sm mb-5">
-            <MapPin size={14} />
+            <MapPin size={14} className="text-latitud-orange" />
             <span>{property.zone}, {property.city}</span>
           </div>
 
@@ -185,38 +188,40 @@ export default function PropertyDetail() {
             </div>
           )}
 
-          {/* Advisor */}
-          <div className="mt-6 p-4 bg-latitud-light rounded-xl flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-latitud-orange/20 flex items-center justify-center">
-              <span className="text-latitud-orange font-bold text-sm">{property.advisor_name?.[0]}</span>
+          {/* Value phrase */}
+          {property.value_phrase && (
+            <div className="mt-6 p-4 bg-latitud-orange/5 rounded-xl border border-latitud-orange/10">
+              <p className="text-latitud-black text-sm font-medium italic">{property.value_phrase}</p>
             </div>
-            <div className="flex-1">
-              <p className="text-sm font-medium text-latitud-black">{property.advisor_name}</p>
-              <p className="text-xs text-latitud-gray">Consultor Latitud</p>
-            </div>
-            {property.advisor_phone && (
-              <a href={`https://wa.me/${property.advisor_phone?.replace(/[^0-9]/g, '')}`} target="_blank" rel="noopener noreferrer">
-                <div className="w-10 h-10 rounded-full bg-latitud-orange flex items-center justify-center">
-                  <Phone size={16} className="text-white" />
-                </div>
-              </a>
-            )}
-          </div>
+          )}
         </div>
       </div>
 
       {/* Fixed bottom CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 flex gap-3">
-        <button className="flex-1 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm">
-          Contactar asesor
-        </button>
         <button 
           onClick={() => navigate(-1)}
-          className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm"
+          className="flex-1 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm"
         >
+          Volver
+        </button>
+        <button 
+          onClick={() => setShowVisit(true)}
+          className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2"
+        >
+          <Calendar size={16} />
           Solicitar visita
         </button>
       </div>
+
+      <VisitModal 
+        open={showVisit}
+        onClose={() => setShowVisit(false)}
+        property={property}
+        clientId={clientId}
+        clientName={clientName}
+        onSubmit={() => setShowVisit(false)}
+      />
     </div>
   );
 }

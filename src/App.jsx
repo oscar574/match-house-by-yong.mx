@@ -29,6 +29,7 @@ import AdminClientDetail from '@/pages/AdminClientDetail';
 import AdminProperties from '@/pages/AdminProperties';
 import AdminVisits from '@/pages/AdminVisits';
 import AdminTasks from '@/pages/AdminTasks';
+import AdminIntelligence from '@/pages/AdminIntelligence';
 
 function App() {
   return (
@@ -57,6 +58,7 @@ function App() {
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/clients" element={<AdminClients />} />
                 <Route path="/admin/client/:id" element={<AdminClientDetail />} />
+                <Route path="/admin/intelligence" element={<AdminIntelligence />} />
                 <Route path="/admin/properties" element={<AdminProperties />} />
                 <Route path="/admin/visits" element={<AdminVisits />} />
                 <Route path="/admin/tasks" element={<AdminTasks />} />
