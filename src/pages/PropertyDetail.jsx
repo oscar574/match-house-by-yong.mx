@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
+import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
 import VisitModal from '@/components/VisitModal';
 
 export default function PropertyDetail() {
@@ -36,7 +37,7 @@ export default function PropertyDetail() {
     );
   }
 
-  const photos = property.photos || [];
+  const photos = getPropertyPhotos(property);
   const clientId = localStorage.getItem('latitud_client_id');
   const clientName = localStorage.getItem('latitud_client_name');
 
@@ -44,9 +45,10 @@ export default function PropertyDetail() {
     <div className="min-h-screen bg-white pb-24">
       {/* Photo gallery */}
       <div className="relative h-[55vh]">
-        <img 
-          src={photos[photoIndex] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'}
+        <img
+          src={photos[photoIndex] || getFallbackImage(property)}
           alt={property.title}
+          onError={(e) => { e.target.src = getFallbackImage(property); }}
           className="w-full h-full object-cover"
         />
         <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
