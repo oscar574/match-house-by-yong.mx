@@ -23,7 +23,7 @@ export default function PropertyCard({ property, matchPercentage, matchReason })
   };
 
   return (
-    <div className="relative w-full h-full rounded-[1.75rem] overflow-hidden bg-latitud-black shadow-2xl">
+    <div className="relative w-full h-full min-h-[60vh] rounded-[1.75rem] overflow-hidden bg-latitud-black shadow-2xl">
       {/* Photo — occupies full card (min 65%) */}
       <div className="absolute inset-0">
         <img

@@ -138,7 +138,7 @@ export default function Discover() {
       )}
 
       {/* Card area */}
-      <div className="flex-1 px-4 pb-4 relative">
+      <div className="flex-1 px-4 pb-4 relative min-h-[60vh]">
         {noMore ? (
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
             <div className="w-16 h-16 rounded-full bg-latitud-orange/10 flex items-center justify-center mb-4">
@@ -161,7 +161,7 @@ export default function Discover() {
               animate={{ opacity: 1, x: 0, scale: 1 }}
               exit={{ opacity: 0, x: direction > 0 ? -100 : 100, scale: 0.95 }}
               transition={{ duration: 0.35 }}
-              className="h-full"
+              className="h-full min-h-[60vh]"
             >
               <PropertyCard 
                 property={currentProperty}
