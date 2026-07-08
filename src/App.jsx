@@ -31,6 +31,7 @@ import AdminVisits from '@/pages/AdminVisits';
 import AdminTasks from '@/pages/AdminTasks';
 import AdminIntelligence from '@/pages/AdminIntelligence';
 import AdminDemoChecklist from '@/pages/AdminDemoChecklist';
+import AdminWhiteLabel from '@/pages/AdminWhiteLabel';
 
 function App() {
   return (
@@ -64,6 +65,7 @@ function App() {
                 <Route path="/admin/visits" element={<AdminVisits />} />
                 <Route path="/admin/tasks" element={<AdminTasks />} />
                 <Route path="/admin/demo-checklist" element={<AdminDemoChecklist />} />
+                <Route path="/admin/white-label" element={<AdminWhiteLabel />} />
               </Route>
             </Route>
 

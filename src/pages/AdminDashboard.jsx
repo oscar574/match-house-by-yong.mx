@@ -59,10 +59,24 @@ export default function AdminDashboard() {
     const budgets = clients.filter(c => budgetValues[c.budget_range]).map(c => budgetValues[c.budget_range]);
     const avgBudget = budgets.length > 0 ? budgets.reduce((a, b) => a + b, 0) / budgets.length : 0;
 
+    const buyerScores = clients.map(c => c.buyer_intent_score ?? c.lead_score ?? 0);
+    const avgBuyerScore = buyerScores.length ? Math.round(buyerScores.reduce((a, b) => a + b, 0) / buyerScores.length) : 0;
+    const rangeCounts = {};
+    clients.forEach(c => { if (c.budget_range) rangeCounts[c.budget_range] = (rangeCounts[c.budget_range] || 0) + 1; });
+    const topPriceRange = Object.entries(rangeCounts).sort((a, b) => b[1] - a[1])[0]?.[0] || '—';
+    const topNeighborhood = topZones[0]?.[0] || '—';
+    const urgentTasks = tasks.filter(t => t.status === 'Pendiente' && t.priority === 'Alta').length;
+    const highIntentClients = clients.filter(c => (c.buyer_intent_score ?? c.lead_score ?? 0) >= 50).slice(0, 3);
+
     setData({
       totalClients: clients.length,
       pendingTasks: tasks.filter(t => t.status === 'Pendiente').length,
       viewsCount: reactions.filter(r => r.reaction_type === 'view').length,
+      avgBuyerScore,
+      topNeighborhood,
+      topPriceRange,
+      urgentTasks,
+      highIntentClients,
       newClients: newClients.length,
       onboarded: onboarded.length,
       withLikes: withLikes.length,
@@ -90,14 +104,13 @@ export default function AdminDashboard() {
   }
 
   const stats = [
-    { label: 'Clientes', value: data.totalClients, icon: Users, color: 'bg-latitud-orange/10 text-latitud-orange' },
-    { label: 'Leads nuevos', value: data.newClients, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
-    { label: 'Con likes', value: data.withLikes, icon: Heart, color: 'bg-red-50 text-red-500' },
-    { label: 'Citas solicitadas', value: data.pendingVisits, icon: Calendar, color: 'bg-[#EAF2FF] text-latitud-orange' },
-    { label: 'Propiedades vistas', value: data.viewsCount, icon: Building2, color: 'bg-gray-100 text-latitud-gray' },
-    { label: 'Propiedades activas', value: data.totalProperties, icon: Building2, color: 'bg-gray-100 text-latitud-gray' },
-    { label: 'Tareas pendientes', value: data.pendingTasks, icon: ListTodo, color: 'bg-yellow-50 text-yellow-600' },
-    { label: 'Alta intención', value: data.highIntent, icon: AlertTriangle, color: 'bg-yellow-50 text-yellow-600' },
+    { label: 'Active buyers', value: data.totalClients, icon: Users, color: 'bg-latitud-orange/10 text-latitud-orange' },
+    { label: 'High-intent leads', value: data.highIntent, icon: AlertTriangle, color: 'bg-yellow-50 text-yellow-600' },
+    { label: 'Visit requests', value: data.pendingVisits, icon: Calendar, color: 'bg-[#EAF2FF] text-latitud-orange' },
+    { label: 'Favorite properties', value: data.totalLikes, icon: Heart, color: 'bg-red-50 text-red-500' },
+    { label: 'Avg buyer score', value: data.avgBuyerScore, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
+    { label: 'Top neighborhood', value: data.topNeighborhood, icon: MapPin, color: 'bg-gray-100 text-latitud-gray' },
+    { label: 'Top price range', value: data.topPriceRange, icon: TrendingUp, color: 'bg-gray-100 text-latitud-gray' },
   ];
 
   return (
@@ -150,9 +163,48 @@ export default function AdminDashboard() {
         </Link>
         <Link to="/admin/demo-checklist" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
           <CheckCircle2 size={16} className="text-latitud-orange" />
-          <span className="text-xs font-medium text-latitud-black">Demo Checklist</span>
+          <span className="text-xs font-medium text-latitud-black">Launch Checklist</span>
           <ChevronRight size={12} className="text-latitud-gray/50" />
         </Link>
+      </div>
+
+      {/* Today's opportunities */}
+      <div className="mb-6">
+        <h2 className="font-heading text-base text-latitud-black mb-3">Today's opportunities</h2>
+        <div className="grid grid-cols-2 gap-3">
+          <Link to="/admin/clients" className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <AlertTriangle size={14} className="text-[#C9A45C]" />
+              <span className="text-[10px] uppercase tracking-wider text-latitud-gray font-semibold">High-intent leads</span>
+            </div>
+            <p className="text-xl font-bold text-latitud-black">{data.highIntent}</p>
+            <p className="text-[10px] text-latitud-gray truncate">{data.highIntentClients?.map(c => c.name).join(', ') || '—'}</p>
+          </Link>
+          <Link to="/admin/visits" className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar size={14} className="text-[#C9A45C]" />
+              <span className="text-[10px] uppercase tracking-wider text-latitud-gray font-semibold">Pending visits</span>
+            </div>
+            <p className="text-xl font-bold text-latitud-black">{data.pendingVisits}</p>
+            <p className="text-[10px] text-latitud-gray">Citas por confirmar</p>
+          </Link>
+          <Link to="/admin/properties" className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <Heart size={14} className="text-[#C9A45C]" />
+              <span className="text-[10px] uppercase tracking-wider text-latitud-gray font-semibold">Most favorited</span>
+            </div>
+            <p className="text-sm font-semibold text-latitud-black truncate">{data.topLiked[0]?.[0] || '—'}</p>
+            <p className="text-[10px] text-latitud-gray">{data.topLiked[0]?.[1] || 0} favoritos</p>
+          </Link>
+          <Link to="/admin/tasks" className="bg-white rounded-2xl p-4 shadow-sm">
+            <div className="flex items-center gap-2 mb-1">
+              <ListTodo size={14} className="text-[#C9A45C]" />
+              <span className="text-[10px] uppercase tracking-wider text-latitud-gray font-semibold">Urgent tasks</span>
+            </div>
+            <p className="text-xl font-bold text-latitud-black">{data.urgentTasks}</p>
+            <p className="text-[10px] text-latitud-gray">Prioridad alta</p>
+          </Link>
+        </div>
       </div>
 
       {/* Ticket promedio */}

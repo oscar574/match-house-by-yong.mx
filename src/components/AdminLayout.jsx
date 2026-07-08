@@ -1,7 +1,8 @@
 import React, { useState } from 'react';
 import { Outlet, Link, useLocation } from 'react-router-dom';
-import { LayoutDashboard, Users, Building2, Calendar, ClipboardList, LogOut, Menu, X, BarChart3 } from 'lucide-react';
+import { LayoutDashboard, Users, Building2, Calendar, ClipboardList, LogOut, Menu, X, BarChart3, Settings, CheckCircle2, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { brandConfig } from '@/lib/brandConfig';
 import LatitudLogo from '@/components/LatitudLogo';
 
 const NAV_ITEMS = [
@@ -11,6 +12,8 @@ const NAV_ITEMS = [
   { label: 'Propiedades', path: '/admin/properties', icon: Building2 },
   { label: 'Visitas', path: '/admin/visits', icon: Calendar },
   { label: 'Tareas', path: '/admin/tasks', icon: ClipboardList },
+  { label: 'White Label', path: '/admin/white-label', icon: Settings },
+  { label: 'Launch Checklist', path: '/admin/demo-checklist', icon: CheckCircle2 },
 ];
 
 export default function AdminLayout() {
@@ -75,6 +78,14 @@ export default function AdminLayout() {
 
       {/* Content */}
       <div className="pb-20 md:pb-4">
+        {brandConfig.demo_whatsapp_otp_enabled && (
+          <div className="bg-[#E6D3A3]/25 border-b border-[#C9A45C]/20 px-4 py-2 flex items-center gap-2">
+            <Sparkles size={13} className="text-[#C9A45C] shrink-0" />
+            <p className="text-[11px] text-latitud-black/70">
+              <span className="font-semibold">Demo Mode Active</span> · Propiedades demo · EasyBroker no conectado · WhatsApp OTP demo (123456)
+            </p>
+          </div>
+        )}
         <Outlet />
       </div>
     </div>

@@ -6,6 +6,7 @@ import { formatPrice } from '@/lib/matchEngine';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import { useToast } from '@/components/ui/use-toast';
 import { computeDuplicateFlags, countDuplicates, groupDuplicates } from '@/lib/duplicateDetection';
+import EasyBrokerIntegration from '@/components/EasyBrokerIntegration';
 
 export default function AdminProperties() {
   const { toast } = useToast();
@@ -177,6 +178,8 @@ export default function AdminProperties() {
         </div>
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
+
+      <EasyBrokerIntegration />
 
       {/* Duplicate detection summary */}
       <div className="bg-latitud-light rounded-xl p-3 mb-4 flex items-center justify-between">
