@@ -3,6 +3,7 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, Phone } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
+import { isBuyerVisible } from '@/lib/commissionRules';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
 import { addLeadScore, getLeadStatus, ensureLeadTask } from '@/lib/leadScoring';
 import VisitModal from '@/components/VisitModal';
@@ -78,10 +79,10 @@ export default function PropertyDetail() {
 
           // Similar properties
           const zoneProps = await base44.entities.Property.filter({ status: 'Disponible', zone: p.zone });
-          let sim = zoneProps.filter(x => x.id !== p.id && x.is_duplicate !== true);
+          let sim = zoneProps.filter(x => x.id !== p.id && isBuyerVisible(x));
           if (sim.length < 4) {
             const cityProps = await base44.entities.Property.filter({ status: 'Disponible', city: 'Mérida' });
-            const more = cityProps.filter(x => x.id !== p.id && x.is_duplicate !== true && !sim.find(s => s.id === x.id) && Math.abs(x.price - p.price) / p.price < 0.5);
+            const more = cityProps.filter(x => x.id !== p.id && isBuyerVisible(x) && !sim.find(s => s.id === x.id) && Math.abs(x.price - p.price) / p.price < 0.5);
             sim = [...sim, ...more];
           }
           if (cancelled) return;
@@ -181,6 +182,22 @@ export default function PropertyDetail() {
     return (
       <div className="min-h-screen bg-white flex items-center justify-center">
         <p className="text-latitud-gray">Propiedad no encontrada</p>
+      </div>
+    );
+  }
+
+  // Commercial rule: buyers never see properties that don't share commission.
+  if (!isBuyerVisible(property)) {
+    return (
+      <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6 text-center">
+        <div className="w-14 h-14 rounded-full bg-latitud-light flex items-center justify-center mb-3">
+          <Heart size={24} className="text-latitud-gray" />
+        </div>
+        <p className="font-heading text-lg text-latitud-black mb-1">Esta propiedad ya no está disponible</p>
+        <p className="text-sm text-latitud-gray mb-6">Explora otras casas que se ajusten a ti.</p>
+        <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
+          Descubrir propiedades
+        </button>
       </div>
     );
   }

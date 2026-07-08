@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Users, Heart, Calendar, AlertTriangle, TrendingUp, Building2, ThumbsDown, MapPin, ListTodo, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
+import { getEasyBrokerMode, modeWarning } from '@/lib/commissionRules';
 
 export default function AdminDashboard() {
   const [data, setData] = useState(null);
@@ -116,7 +117,16 @@ export default function AdminDashboard() {
   return (
     <div className="px-4 py-6">
       <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Admin</h1>
-      <p className="text-sm text-latitud-gray mb-6">Centro de control</p>
+      <p className="text-sm text-latitud-gray mb-3">Centro de control</p>
+
+      <div className={`rounded-2xl p-3 mb-5 text-xs font-medium flex items-start gap-2 ${
+        getEasyBrokerMode() === 'mls' ? 'bg-green-50 text-green-700' :
+        getEasyBrokerMode() === 'standard' ? 'bg-yellow-50 text-yellow-700' :
+        'bg-latitud-orange/10 text-latitud-orange'
+      }`}>
+        <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+        <span>{modeWarning(getEasyBrokerMode())}</span>
+      </div>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">

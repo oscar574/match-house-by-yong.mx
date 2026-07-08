@@ -6,7 +6,9 @@ import { formatPrice } from '@/lib/matchEngine';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import { useToast } from '@/components/ui/use-toast';
 import { computeDuplicateFlags, countDuplicates, groupDuplicates } from '@/lib/duplicateDetection';
+import { evaluateBuyerVisibility } from '@/lib/commissionRules';
 import EasyBrokerIntegration from '@/components/EasyBrokerIntegration';
+import EasyBrokerReview from '@/components/EasyBrokerReview';
 
 export default function AdminProperties() {
   const { toast } = useToast();
@@ -15,6 +17,28 @@ export default function AdminProperties() {
   const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState('Todas');
   const [dupStats, setDupStats] = useState({ groups: 0, hidden: 0, total: 0 });
+  const [viewMode, setViewMode] = useState('inventory');
+
+  const syncSummary = React.useMemo(() => {
+    let visible = 0, hidden = 0, noCom = 0, photos = 0, constr = 0, dups = 0, review = 0;
+    properties.forEach(p => {
+      const v = evaluateBuyerVisibility(p);
+      if (v.visible) visible++;
+      else {
+        hidden++;
+        if (v.reason === 'no_shared_commission' || v.reason === 'commission_unknown') noCom++;
+        if (v.reason === 'missing_photos') photos++;
+        if (v.reason === 'missing_construction_m2') constr++;
+        if (v.reason === 'duplicate_hidden') dups++;
+      }
+      if (p.manual_review_required) review++;
+    });
+    return {
+      totalImported: properties.length, visible, hidden,
+      hiddenNoCommission: noCom, hiddenPhotos: photos, hiddenConstruction: constr,
+      hiddenDuplicates: dups, pendingReview: review, lastSync: 'Never'
+    };
+  }, [properties]);
 
   useEffect(() => {
     base44.entities.Property.list('-created_date', 50).then(p => {
@@ -179,8 +203,22 @@ export default function AdminProperties() {
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
 
-      <EasyBrokerIntegration />
+      <EasyBrokerIntegration syncSummary={syncSummary} />
 
+      <div className="flex gap-2 mb-4">
+        <button onClick={() => setViewMode('inventory')} className={`px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'inventory' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>Inventario</button>
+        <button onClick={() => setViewMode('review')} className={`px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'review' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>EasyBroker MLS Review</button>
+      </div>
+
+      {viewMode === 'review' ? (
+        <EasyBrokerReview
+          properties={properties}
+          onUpdate={updateProperty}
+          onSetMaster={setAsMaster}
+          onSeparate={separateFromGroup}
+        />
+      ) : (
+      <>
       {/* Duplicate detection summary */}
       <div className="bg-latitud-light rounded-xl p-3 mb-4 flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -331,6 +369,8 @@ export default function AdminProperties() {
           );
         })}
       </div>
+</>
+      )}
     </div>
   );
 }

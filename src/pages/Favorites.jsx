@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, Compass, DollarSign } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
+import { isBuyerVisible } from '@/lib/commissionRules';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import TourRequestModal from '@/components/TourRequestModal';
 import PropertyThumb from '@/components/PropertyThumb';
@@ -47,7 +48,7 @@ export default function Favorites() {
 
     setClient(clientData);
     const likedIds = reactions.map(r => r.property_id);
-    const liked = allProps.filter(p => likedIds.includes(p.id) && p.is_duplicate !== true).map(p => {
+    const liked = allProps.filter(p => likedIds.includes(p.id) && isBuyerVisible(p)).map(p => {
       const match = calculateMatch(p, clientData);
       return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
     }).sort((a, b) => b._matchPercentage - a._matchPercentage);
@@ -55,7 +56,7 @@ export default function Favorites() {
     setLikedProperties(liked);
 
     const also = allProps
-      .filter(p => !likedIds.includes(p.id) && p.is_duplicate !== true)
+      .filter(p => !likedIds.includes(p.id) && isBuyerVisible(p))
       .map(p => ({ ...p, _sim: similarityScore(p, clientData), _match: calculateMatch(p, clientData).percentage }))
       .sort((a, b) => b._sim - a._sim || b._match - a._match)
       .slice(0, 6);

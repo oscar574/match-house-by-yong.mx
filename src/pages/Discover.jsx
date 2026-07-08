@@ -10,20 +10,14 @@ import VisitModal from '@/components/VisitModal';
 import InsightModal from '@/components/InsightModal';
 import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
+import { isBuyerVisible } from '@/lib/commissionRules';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 import { useToast } from '@/components/ui/use-toast';
 
-// Only show homes that generate commission
+// Only show homes that share commission and can generate income.
 function isCommissionVisible(p) {
-  const commissionOk = p.commission_status === 'Confirmada' || p.shared_commission === true || p.collaboration_enabled === true;
-  const statusOk = p.status === 'Disponible';
-  const visibleOk = (p.is_visible_in_app !== false) && (p.visible_to_clients !== false);
-  const notDuplicate = p.is_duplicate !== true || !p.duplicate_master_property_id;
-  const hasData = p.price > 0 && p.construction_area > 0;
-  const hasPhoto = (p.cover_photo_url || (p.photos && p.photos.length > 0) || (p.photo_urls && p.photo_urls.length > 0)) !== false;
-  const isCasa = p.property_type === 'Casa';
-  return commissionOk && statusOk && visibleOk && notDuplicate && hasData && hasPhoto && isCasa;
+  return isBuyerVisible(p);
 }
 
 export default function Discover() {
