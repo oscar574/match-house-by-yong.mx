@@ -56,6 +56,7 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
         const { score, status } = addLeadScore(c.lead_score || 0, 'REQUEST_VISIT', true);
         const updates = {
           lead_score: score,
+          buyer_intent_score: score,
           lead_status: status,
           visit_requests_count: (c.visit_requests_count || 0) + 1,
           last_activity_date: new Date().toISOString()

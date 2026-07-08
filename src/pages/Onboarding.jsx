@@ -116,6 +116,9 @@ export default function Onboarding() {
       payment_method: answers.payment_method || '',
       bedrooms_wanted: answers.bedrooms_wanted || '',
       onboarding_completed: true,
+      buyer_intent_score: 10,
+      lead_score: 10,
+      lead_status: 'explorando',
       commercial_stage: 'Onboarding completado',
       lead_source: 'MatchHouse',
       assigned_advisor: answers.city === 'Ciudad de México' ? 'Ana Martínez' : 'Carlos Ramírez'

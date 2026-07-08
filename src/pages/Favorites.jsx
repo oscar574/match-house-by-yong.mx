@@ -1,15 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MapPin, Bed, Bath, Calendar, Maximize, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, MapPin, Bed, Bath, Maximize, Calendar, Trash2, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
-import { getCoverPhoto, getFallbackImage, getPropertyPhotos } from '@/lib/propertyImages';
+import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import VisitModal from '@/components/VisitModal';
+import PropertyThumb from '@/components/PropertyThumb';
 import LatitudLogo from '@/components/LatitudLogo';
+
+const similarityScore = (p, client) => {
+  let s = 0;
+  if (client?.favorite_zones?.includes(p.zone)) s += 3;
+  const maxB = client?.budget_max_estimated || 0;
+  if (maxB > 0 && p.price <= maxB) s += 2;
+  if (client?.preferred_bedrooms && p.bedrooms === client.preferred_bedrooms) s += 2;
+  const feats = client?.important_features || [];
+  (p.amenities || []).forEach(a => {
+    if (feats.some(f => a.toLowerCase().includes(f.toLowerCase()))) s += 1;
+  });
+  return s;
+};
 
 export default function Favorites() {
   const navigate = useNavigate();
   const [likedProperties, setLikedProperties] = useState([]);
+  const [alsoLike, setAlsoLike] = useState([]);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [visitProperty, setVisitProperty] = useState(null);
@@ -36,7 +51,33 @@ export default function Favorites() {
     }).sort((a, b) => b._matchPercentage - a._matchPercentage);
 
     setLikedProperties(liked);
+
+    // "También te pueden gustar": not liked, similar by zone/price/beds/amenities
+    const also = allProps
+      .filter(p => !likedIds.includes(p.id) && p.is_duplicate !== true)
+      .map(p => ({ ...p, _sim: similarityScore(p, clientData), _match: calculateMatch(p, clientData).percentage }))
+      .sort((a, b) => b._sim - a._sim || b._match - a._match)
+      .slice(0, 6);
+    setAlsoLike(also);
+
     setLoading(false);
+  };
+
+  const removeFavorite = async (property) => {
+    const clientId = localStorage.getItem('latitud_client_id');
+    if (!clientId) return;
+    try {
+      const likeReactions = await base44.entities.Reaction.filter({ client_id: clientId, property_id: property.id, reaction_type: 'like' });
+      if (likeReactions.length > 0) {
+        await base44.entities.Reaction.delete(likeReactions[0].id);
+      }
+      const c = client;
+      await base44.entities.Client.update(clientId, {
+        liked_count: Math.max(0, (c?.liked_count || 1) - 1),
+        favorite_property_ids: (c?.favorite_property_ids || []).filter(pid => pid !== property.id)
+      });
+      loadFavorites();
+    } catch (e) { /* ignore */ }
   };
 
   if (loading) {
@@ -70,8 +111,10 @@ export default function Favorites() {
         {likedProperties.length === 0 ? (
           <div className="text-center py-20">
             <Heart size={40} className="text-white/20 mx-auto mb-3" />
-            <p className="text-white/50 text-sm mb-1">Aún no tienes propiedades favoritas.</p>
-            <p className="text-white/30 text-xs mb-6">Toca el corazón en Discover para guardarlas aquí.</p>
+            <p className="text-white/70 text-base mb-2">Todavía no tienes propiedades favoritas.</p>
+            <p className="text-white/40 text-sm mb-6 max-w-xs mx-auto">
+              Guarda las casas que te gusten para compararlas y agendar una visita.
+            </p>
             <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
               Descubrir propiedades
             </button>
@@ -133,13 +176,32 @@ export default function Favorites() {
                     onClick={(e) => { e.stopPropagation(); setVisitProperty(property); }}
                     className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-latitud-orange text-white flex items-center justify-center gap-1.5"
                   >
-                    <Calendar size={13} /> Agendar visita
+                    <Calendar size={13} /> Agendar
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); removeFavorite(property); }}
+                    className="px-3 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center"
+                  >
+                    <Trash2 size={14} />
                   </button>
                 </div>
               </div>
             </div>
           );
           })
+        )}
+
+        {/* También te pueden gustar */}
+        {alsoLike.length > 0 && (
+          <div className="pt-6">
+            <h3 className="font-heading text-lg text-white mb-1">También te pueden gustar</h3>
+            <p className="text-xs text-white/40 mb-4">Basado en tus zonas, presupuesto y preferencias</p>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2">
+              {alsoLike.map(p => (
+                <PropertyThumb key={p.id} property={p} matchPercentage={p._match} />
+              ))}
+            </div>
+          </div>
         )}
       </div>
 

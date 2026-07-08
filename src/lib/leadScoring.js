@@ -38,3 +38,16 @@ export function addLeadScore(currentScore, action, hasVisitRequest = false) {
   const newScore = currentScore + actionDef.points;
   return { score: newScore, status: getLeadStatus(newScore, hasVisitRequest) };
 }
+
+// Build a client update object that keeps buyer_intent_score, lead_score and lead_status in sync.
+// Pass the current client object (or null) and an action key from LEAD_ACTIONS.
+export function buildIntentUpdate(client, action) {
+  const current = client?.buyer_intent_score ?? client?.lead_score ?? 0;
+  const hasVisit = (client?.visit_requests_count || 0) > 0 || action === 'REQUEST_VISIT';
+  const { score, status } = addLeadScore(current, action, hasVisit);
+  return {
+    buyer_intent_score: score,
+    lead_score: score,
+    lead_status: status
+  };
+}

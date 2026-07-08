@@ -104,6 +104,9 @@ export default function Discover() {
     const familyHomes = pool.filter(p => (p.bedrooms || 0) >= 3).slice(0, 20);
     const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
     const investments = pool.filter(p => p.rental_potential || (p.investment_profile && p.investment_profile !== 'N/A')).slice(0, 20);
+    const northZones = ['Temozón Norte','Cabo Norte','San Ramón Norte','Privadas de Mérida Norte','Montebello','Altabrisa','Santa Gertrudis Copó','Dzityá'];
+    const meridaNorte = pool.filter(p => northZones.includes(p.zone)).slice(0, 20);
+    const countryClub = pool.filter(p => (p.zone || '').includes('Country Club') || (p.lifestyle_tags || []).includes('Country Club')).slice(0, 20);
 
     return [
       { title: 'Recomendadas para ti', subtitle: 'Basado en tu perfil', properties: recommended },
@@ -114,6 +117,8 @@ export default function Discover() {
       { title: 'Casas familiares', subtitle: '3+ recámaras', properties: familyHomes },
       { title: 'Casas con alberca', subtitle: 'Disfruta el sol', properties: withPool },
       { title: 'Oportunidades de inversión', subtitle: 'Potencial de renta', properties: investments },
+      { title: 'Mérida Norte', subtitle: 'Mejor zona de la ciudad', properties: meridaNorte },
+      { title: 'Estilo Country Club', subtitle: 'Vida de club', properties: countryClub },
     ].filter(c => c.properties.length > 0);
   }, [properties, client]);
 
@@ -157,6 +162,7 @@ export default function Discover() {
       hasVisit
     );
     updates.lead_score = newScore;
+    updates.buyer_intent_score = newScore;
     updates.lead_status = newStatus;
     setLeadScore(newScore);
 

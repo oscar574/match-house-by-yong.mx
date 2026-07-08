@@ -8,6 +8,13 @@
     "easybroker_public_id": {
       "type": "string"
     },
+    "easybroker_internal_id": {
+      "type": "string"
+    },
+    "easybroker_updated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
     "internal_code": {
       "type": "string"
     },
@@ -261,6 +268,27 @@
     "rental_potential": {
       "type": "boolean",
       "default": false
+    },
+    "sync_source": {
+      "type": "string",
+      "enum": [
+        "manual",
+        "demo",
+        "easybroker"
+      ],
+      "default": "manual"
+    },
+    "sync_status": {
+      "type": "string",
+      "enum": [
+        "pending",
+        "synced",
+        "error"
+      ],
+      "default": "pending"
+    },
+    "raw_easybroker_payload": {
+      "type": "object"
     },
     "last_sync_date": {
       "type": "string",

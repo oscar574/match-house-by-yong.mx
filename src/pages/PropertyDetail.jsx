@@ -1,10 +1,12 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, Phone } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
+import { addLeadScore, getLeadStatus } from '@/lib/leadScoring';
 import VisitModal from '@/components/VisitModal';
+import PropertyThumb from '@/components/PropertyThumb';
 
 export default function PropertyDetail() {
   const { id } = useParams();
@@ -16,6 +18,13 @@ export default function PropertyDetail() {
   const [showVisit, setShowVisit] = useState(false);
   const [isFavorite, setIsFavorite] = useState(false);
   const [matchData, setMatchData] = useState(null);
+  const [similar, setSimilar] = useState([]);
+
+  // Intent tracking refs (once per action)
+  const view20sRef = useRef(false);
+  const allPhotosRef = useRef(false);
+  const shareRef = useRef(false);
+  const favoriteRef = useRef(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -33,7 +42,13 @@ export default function PropertyDetail() {
           setClient(c);
           setMatchData(calculateMatch(p, c));
 
-          // Register a view reaction (for tracking)
+          // Reopen detection: prior views for this property?
+          const priorViews = await base44.entities.Reaction.filter({ client_id: clientId, property_id: p.id, reaction_type: 'view' });
+          if (!cancelled && priorViews.length > 0) {
+            addIntent(clientId, 'REOPEN_PROPERTY');
+          }
+
+          // Register a fresh view reaction
           await base44.entities.Reaction.create({
             client_id: clientId,
             property_id: p.id,
@@ -45,15 +60,59 @@ export default function PropertyDetail() {
             property_type: p.property_type
           });
 
-          // Check if already favorite
+          // Favorite check
           const favs = await base44.entities.Reaction.filter({ client_id: clientId, property_id: p.id, reaction_type: 'like' });
           if (cancelled) return;
           setIsFavorite(favs.length > 0);
+
+          // 20s view intent
+          setTimeout(() => {
+            if (!cancelled && !view20sRef.current) {
+              view20sRef.current = true;
+              addIntent(clientId, 'VIEW_20s');
+            }
+          }, 20000);
+
+          // Similar properties
+          const zoneProps = await base44.entities.Property.filter({ status: 'Disponible', zone: p.zone });
+          let sim = zoneProps.filter(x => x.id !== p.id && x.is_duplicate !== true);
+          if (sim.length < 4) {
+            const cityProps = await base44.entities.Property.filter({ status: 'Disponible', city: 'Mérida' });
+            const more = cityProps.filter(x => x.id !== p.id && x.is_duplicate !== true && !sim.find(s => s.id === x.id) && Math.abs(x.price - p.price) / p.price < 0.5);
+            sim = [...sim, ...more];
+          }
+          if (cancelled) return;
+          sim = sim.slice(0, 5).map(x => ({ ...x, _match: c ? calculateMatch(x, c).percentage : null }));
+          setSimilar(sim);
         } catch (e) { /* ignore */ }
       }
     })();
     return () => { cancelled = true; };
   }, [id]);
+
+  // All-photos intent
+  useEffect(() => {
+    const photos = property ? getPropertyPhotos(property) : [];
+    if (photos.length > 1 && photoIndex === photos.length - 1 && !allPhotosRef.current) {
+      allPhotosRef.current = true;
+      const clientId = localStorage.getItem('latitud_client_id');
+      if (clientId) addIntent(clientId, 'VIEW_ALL_PHOTOS');
+    }
+  }, [photoIndex, property]);
+
+  const addIntent = async (clientId, action) => {
+    try {
+      const c = await base44.entities.Client.get(clientId);
+      const current = c.buyer_intent_score ?? c.lead_score ?? 0;
+      const hasVisit = (c.visit_requests_count || 0) > 0 || action === 'REQUEST_VISIT';
+      const { score } = addLeadScore(current, action, hasVisit);
+      await base44.entities.Client.update(clientId, {
+        buyer_intent_score: score,
+        lead_score: score,
+        lead_status: getLeadStatus(score, hasVisit)
+      });
+    } catch (e) { /* ignore */ }
+  };
 
   const toggleFavorite = async () => {
     const clientId = localStorage.getItem('latitud_client_id');
@@ -62,6 +121,10 @@ export default function PropertyDetail() {
       setIsFavorite(false);
     } else {
       setIsFavorite(true);
+      if (!favoriteRef.current) {
+        favoriteRef.current = true;
+        addIntent(clientId, 'SAVE_FAVORITE');
+      }
       await base44.entities.Reaction.create({
         client_id: clientId,
         property_id: property.id,
@@ -73,13 +136,27 @@ export default function PropertyDetail() {
         property_type: property.property_type
       });
       if (client) {
-        const updates = {
+        await base44.entities.Client.update(clientId, {
           liked_count: (client.liked_count || 0) + 1,
           last_activity_date: new Date().toISOString(),
           favorite_property_ids: [...(client.favorite_property_ids || []), property.id].slice(-50)
-        };
-        await base44.entities.Client.update(clientId, updates);
+        });
       }
+    }
+  };
+
+  const handleShare = async () => {
+    if (!shareRef.current) {
+      shareRef.current = true;
+      const clientId = localStorage.getItem('latitud_client_id');
+      if (clientId) addIntent(clientId, 'SHARE_PROPERTY');
+    }
+    const url = window.location.href;
+    if (navigator.share) {
+      try { await navigator.share({ title: property.title, url }); } catch (e) { /* cancelled */ }
+    } else {
+      try { navigator.clipboard.writeText(url); } catch (e) { /* ignore */ }
+      alert('Link copiado');
     }
   };
 
@@ -102,6 +179,7 @@ export default function PropertyDetail() {
   const photos = getPropertyPhotos(property);
   const clientId = localStorage.getItem('latitud_client_id');
   const clientName = localStorage.getItem('latitud_client_name');
+  const advisorPhone = (property.advisor_phone || '').replace(/[^0-9]/g, '');
 
   return (
     <div className="min-h-screen bg-white pb-28">
@@ -121,11 +199,11 @@ export default function PropertyDetail() {
             <ArrowLeft size={20} className="text-white" />
           </button>
           <div className="flex gap-2">
-            <button className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+            <button onClick={handleShare} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
               <Share2 size={18} className="text-white" />
             </button>
             <button onClick={toggleFavorite} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-              <Heart size={18} className="text-white" fill={isFavorite ? '#FF7A00' : 'none'} stroke={isFavorite ? '#FF7A00' : 'white'} />
+              <Heart size={18} className="text-white" fill={isFavorite ? '#0057FF' : 'none'} stroke={isFavorite ? '#0057FF' : 'white'} />
             </button>
           </div>
         </div>
@@ -255,6 +333,20 @@ export default function PropertyDetail() {
             </div>
           )}
 
+          {/* Lifestyle tags */}
+          {property.lifestyle_tags?.length > 0 && (
+            <div className="mb-6">
+              <h3 className="font-semibold text-latitud-black text-sm mb-3 uppercase tracking-wider">Estilo de vida</h3>
+              <div className="flex flex-wrap gap-2">
+                {property.lifestyle_tags.map(t => (
+                  <span key={t} className="text-xs bg-latitud-orange/10 text-latitud-orange px-3 py-1.5 rounded-full font-medium">
+                    {t}
+                  </span>
+                ))}
+              </div>
+            </div>
+          )}
+
           {/* Extra details */}
           <div className="space-y-0 mb-2">
             {property.land_area > 0 && (
@@ -286,14 +378,36 @@ export default function PropertyDetail() {
         </div>
       </div>
 
+      {/* Similar properties */}
+      {similar.length > 0 && (
+        <div className="px-5 mt-8">
+          <h3 className="font-heading text-lg text-latitud-black mb-1">Propiedades similares</h3>
+          <p className="text-xs text-latitud-gray mb-4">Opciones que también pueden encajar contigo</p>
+          <div className="flex gap-3 overflow-x-auto no-scrollbar pb-2 -mx-5 px-5">
+            {similar.map(p => (
+              <PropertyThumb key={p.id} property={p} matchPercentage={p._match} />
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Fixed bottom CTA */}
       <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-5 py-4 flex gap-3">
         <button
           onClick={() => navigate(-1)}
-          className="px-5 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm"
+          className="px-4 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm"
         >
           Volver
         </button>
+        <a
+          href={advisorPhone ? `https://wa.me/${advisorPhone}` : '#'}
+          target="_blank"
+          rel="noreferrer"
+          className="px-4 py-3 rounded-xl border-2 border-latitud-orange text-latitud-orange font-semibold text-sm flex items-center justify-center gap-1.5"
+        >
+          <Phone size={15} />
+          Asesor
+        </a>
         <button
           onClick={() => setShowVisit(true)}
           className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
