@@ -7,6 +7,7 @@ import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import TourRequestModal from '@/components/TourRequestModal';
 import PropertyThumb from '@/components/PropertyThumb';
 import LatitudLogo from '@/components/LatitudLogo';
+import { useToast } from '@/components/ui/use-toast';
 
 const similarityScore = (p, client) => {
   let s = 0;
@@ -28,6 +29,7 @@ export default function Favorites() {
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTour, setShowTour] = useState(false);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadFavorites();
@@ -75,6 +77,7 @@ export default function Favorites() {
         liked_count: Math.max(0, (c?.liked_count || 1) - 1),
         favorite_property_ids: (c?.favorite_property_ids || []).filter(pid => pid !== property.id)
       });
+      toast({ title: 'Propiedad eliminada de tu selección.' });
       loadFavorites();
     } catch (e) { /* ignore */ }
   };

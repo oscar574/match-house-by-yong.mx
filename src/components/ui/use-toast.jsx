@@ -1,8 +1,9 @@
 // Inspired by react-hot-toast library
 import { useState, useEffect } from "react";
 
-const TOAST_LIMIT = 20;
-const TOAST_REMOVE_DELAY = 1000000;
+// Only one toast visible at a time; auto-dismiss after 1.8s.
+const TOAST_LIMIT = 1;
+const TOAST_REMOVE_DELAY = 1800;
 
 const actionTypes = {
   ADD_TOAST: "ADD_TOAST",
@@ -47,9 +48,10 @@ const _clearFromRemoveQueue = (toastId) => {
 export const reducer = (state, action) => {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
+      // Replace any existing toasts so only one is visible at a time.
       return {
         ...state,
-        toasts: [action.toast, ...state.toasts].slice(0, TOAST_LIMIT),
+        toasts: [action.toast].slice(0, TOAST_LIMIT),
       };
 
     case actionTypes.UPDATE_TOAST:
@@ -63,8 +65,6 @@ export const reducer = (state, action) => {
     case actionTypes.DISMISS_TOAST: {
       const { toastId } = action;
 
-      // ! Side effects ! - This could be extracted into a dismissToast() action,
-      // but I'll keep it here for simplicity
       if (toastId) {
         addToRemoveQueue(toastId);
       } else {
@@ -134,6 +134,9 @@ function toast({ ...props }) {
     },
   });
 
+  // Auto-dismiss after the configured delay.
+  addToRemoveQueue(id);
+
   return {
     id,
     dismiss,
@@ -161,4 +164,4 @@ function useToast() {
   };
 }
 
-export { useToast, toast }; 
+export { useToast, toast };

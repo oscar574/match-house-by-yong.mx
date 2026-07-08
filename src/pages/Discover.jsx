@@ -188,7 +188,7 @@ export default function Discover() {
     if (type === 'like') {
       toast({ title: 'Agregada a tu selección.' });
       const newLiked = (client?.liked_count || 0) + 1;
-      if (newLiked >= 3) {
+      if (newLiked === 3) {
         toast({ title: 'Ya tienes varias propiedades guardadas.', description: 'Puedes solicitar un recorrido cuando quieras.' });
       }
     }
