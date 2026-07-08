@@ -75,7 +75,7 @@ export default function Welcome() {
           </Link>
 
           <p className="text-white/30 text-xs text-center mt-8">
-            Powered by Latitud Inmobiliaria
+            by YONG.MX
           </p>
         </motion.div>
       </div>

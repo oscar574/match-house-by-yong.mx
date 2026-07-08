@@ -9,35 +9,35 @@ export default function PropertyCarousel({ title, subtitle, properties }) {
 
   const scroll = (dir) => {
     if (scrollRef.current) {
-      scrollRef.current.scrollBy({ left: dir * 260, behavior: 'smooth' });
+      scrollRef.current.scrollBy({ left: dir * 480, behavior: 'smooth' });
     }
   };
 
   return (
-    <div className="mb-6">
-      <div className="flex items-center justify-between px-4 mb-3">
+    <div className="mb-7 group">
+      <div className="flex items-end justify-between px-4 mb-3">
         <div>
-          <h3 className="font-heading text-lg text-white">{title}</h3>
-          {subtitle && <p className="text-white/40 text-xs">{subtitle}</p>}
+          <h3 className="font-heading text-lg text-white leading-tight">{title}</h3>
+          {subtitle && <p className="text-white/40 text-xs mt-0.5">{subtitle}</p>}
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-1.5">
           <button
             onClick={() => scroll(-1)}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronLeft size={16} className="text-white/70" />
+            <ChevronLeft size={14} className="text-white/70" />
           </button>
           <button
             onClick={() => scroll(1)}
-            className="w-8 h-8 rounded-full bg-white/10 flex items-center justify-center"
+            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
           >
-            <ChevronRight size={16} className="text-white/70" />
+            <ChevronRight size={14} className="text-white/70" />
           </button>
         </div>
       </div>
       <div
         ref={scrollRef}
-        className="flex gap-3 overflow-x-auto px-4 pb-2 scroll-smooth"
+        className="flex gap-3 overflow-x-auto px-4 pb-2 scroll-smooth no-scrollbar"
         style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
       >
         {properties.map((p, i) => (

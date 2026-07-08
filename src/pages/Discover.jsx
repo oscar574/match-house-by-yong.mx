@@ -203,8 +203,13 @@ export default function Discover() {
       <div className="px-4 pt-6 pb-3 flex items-center justify-between sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <LatitudLogo variant="white" size="sm" />
         <div className="flex items-center gap-3">
-          <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors">
+          <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors relative">
             <Heart size={20} />
+            {client?.liked_count > 0 && (
+              <span className="absolute -top-1.5 -right-1.5 bg-latitud-orange text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+                {client.liked_count}
+              </span>
+            )}
           </button>
           <button onClick={() => navigate('/profile')} className="text-white/60 hover:text-latitud-orange transition-colors">
             <MessageCircle size={20} />
@@ -215,9 +220,12 @@ export default function Discover() {
       {/* Hero swipe deck */}
       {hasSwipable ? (
         <div className="px-4 pb-2 relative">
-          <div className="mb-3 flex items-center gap-2">
-            <Sparkles size={16} className="text-latitud-orange" />
-            <h2 className="font-heading text-lg text-white">Tu mejor opción hoy</h2>
+          <div className="mb-3">
+            <div className="flex items-center gap-2 mb-0.5">
+              <Sparkles size={16} className="text-latitud-orange" />
+              <h2 className="font-heading text-xl text-white">Tu mejor opción hoy</h2>
+            </div>
+            <p className="text-white/40 text-xs ml-6">Desliza para ver más · Toca el corazón para guardar</p>
           </div>
           <div className="relative min-h-[60vh]">
             <AnimatePresence mode="wait">
@@ -271,9 +279,9 @@ export default function Discover() {
               </motion.button>
             </div>
             <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-white/30 tracking-wider uppercase">
-              <span className="w-14 text-center">No</span>
+              <span className="w-14 text-center">Descartar</span>
               <span className="w-16 text-center">Me gusta</span>
-              <span className="w-14 text-center">Visitar</span>
+              <span className="w-14 text-center">Agendar</span>
               <span className="w-14 text-center">Detalles</span>
             </div>
           </div>

@@ -13,7 +13,8 @@
       "enum": [
         "like",
         "dislike",
-        "visit_request"
+        "visit_request",
+        "view"
       ]
     },
     "dislike_reason": {

@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
-import { formatPrice } from '@/lib/matchEngine';
+import { formatPriceExact } from '@/lib/matchEngine';
 import { getPropertyPhotos, getFallbackImage, FALLBACK_ARCHITECTURE } from '@/lib/propertyImages';
 
 export default function PropertyCard({ property, matchPercentage, matchReason }) {
@@ -93,7 +93,7 @@ export default function PropertyCard({ property, matchPercentage, matchReason })
       <div className="absolute bottom-0 left-0 right-0 p-5 z-10">
         {/* Price */}
         <p className="text-latitud-orange font-bold text-2xl mb-1 drop-shadow-lg">
-          {formatPrice(property.price, property.currency)}
+          {formatPriceExact(property.price, property.currency)}
         </p>
 
         {/* Title */}

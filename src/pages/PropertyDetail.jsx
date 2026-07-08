@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { formatPrice } from '@/lib/matchEngine';
+import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
 import VisitModal from '@/components/VisitModal';
 
@@ -10,16 +10,78 @@ export default function PropertyDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const [property, setProperty] = useState(null);
+  const [client, setClient] = useState(null);
   const [photoIndex, setPhotoIndex] = useState(0);
   const [loading, setLoading] = useState(true);
   const [showVisit, setShowVisit] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [matchData, setMatchData] = useState(null);
 
   useEffect(() => {
-    base44.entities.Property.get(id).then(p => {
+    let cancelled = false;
+    (async () => {
+      const p = await base44.entities.Property.get(id);
+      if (cancelled) return;
       setProperty(p);
       setLoading(false);
-    });
+
+      const clientId = localStorage.getItem('latitud_client_id');
+      if (clientId) {
+        try {
+          const c = await base44.entities.Client.get(clientId);
+          if (cancelled) return;
+          setClient(c);
+          setMatchData(calculateMatch(p, c));
+
+          // Register a view reaction (for tracking)
+          await base44.entities.Reaction.create({
+            client_id: clientId,
+            property_id: p.id,
+            reaction_type: 'view',
+            property_title: p.title,
+            property_zone: p.zone,
+            property_city: p.city,
+            property_price: p.price,
+            property_type: p.property_type
+          });
+
+          // Check if already favorite
+          const favs = await base44.entities.Reaction.filter({ client_id: clientId, property_id: p.id, reaction_type: 'like' });
+          if (cancelled) return;
+          setIsFavorite(favs.length > 0);
+        } catch (e) { /* ignore */ }
+      }
+    })();
+    return () => { cancelled = true; };
   }, [id]);
+
+  const toggleFavorite = async () => {
+    const clientId = localStorage.getItem('latitud_client_id');
+    if (!clientId || !property) return;
+    if (isFavorite) {
+      setIsFavorite(false);
+    } else {
+      setIsFavorite(true);
+      await base44.entities.Reaction.create({
+        client_id: clientId,
+        property_id: property.id,
+        reaction_type: 'like',
+        property_title: property.title,
+        property_zone: property.zone,
+        property_city: property.city,
+        property_price: property.price,
+        property_type: property.property_type
+      });
+      if (client) {
+        const updates = {
+          liked_count: (client.liked_count || 0) + 1,
+          last_activity_date: new Date().toISOString(),
+          favorite_property_ids: [...(client.favorite_property_ids || []), property.id].slice(-50)
+        };
+        await base44.entities.Client.update(clientId, updates);
+      }
+    }
+  };
 
   if (loading) {
     return (
@@ -42,17 +104,17 @@ export default function PropertyDetail() {
   const clientName = localStorage.getItem('latitud_client_name');
 
   return (
-    <div className="min-h-screen bg-white pb-24">
+    <div className="min-h-screen bg-white pb-28">
       {/* Photo gallery */}
-      <div className="relative h-[55vh]">
+      <div className="relative h-[60vh]">
         <img
           src={photos[photoIndex] || getFallbackImage(property)}
           alt={property.title}
           onError={(e) => { e.target.src = getFallbackImage(property); }}
           className="w-full h-full object-cover"
         />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-black/20" />
-        
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-6">
           <button onClick={() => navigate(-1)} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
@@ -62,11 +124,27 @@ export default function PropertyDetail() {
             <button className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
               <Share2 size={18} className="text-white" />
             </button>
-            <button className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-              <Heart size={18} className="text-white" />
+            <button onClick={toggleFavorite} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
+              <Heart size={18} className="text-white" fill={isFavorite ? '#FF7A00' : 'none'} stroke={isFavorite ? '#FF7A00' : 'white'} />
             </button>
           </div>
         </div>
+
+        {/* Operation badge */}
+        <div className="absolute top-24 left-4">
+          <span className="bg-latitud-orange text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
+            {property.operation_type}
+          </span>
+        </div>
+
+        {/* Match badge */}
+        {matchData && (
+          <div className="absolute top-24 right-4">
+            <div className="bg-white/90 backdrop-blur-sm text-latitud-black text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
+              <Sparkles size={12} className="text-latitud-orange" /> {matchData.percentage}% match
+            </div>
+          </div>
+        )}
 
         {/* Photo navigation */}
         {photos.length > 1 && (
@@ -84,13 +162,6 @@ export default function PropertyDetail() {
             </button>
           </>
         )}
-
-        {/* Operation badge */}
-        <div className="absolute top-6 left-16 ml-2">
-          <span className="bg-latitud-orange text-white text-xs font-semibold px-3 py-1.5 rounded-full">
-            {property.operation_type}
-          </span>
-        </div>
       </div>
 
       {/* Content */}
@@ -98,7 +169,7 @@ export default function PropertyDetail() {
         <div className="bg-white rounded-t-3xl pt-6">
           {/* Price */}
           <p className="text-latitud-orange font-bold text-3xl mb-1">
-            {formatPrice(property.price, property.currency)}
+            {formatPriceExact(property.price, property.currency)}
           </p>
 
           {/* Title */}
@@ -111,6 +182,14 @@ export default function PropertyDetail() {
             <MapPin size={14} className="text-latitud-orange" />
             <span>{property.zone}, {property.city}</span>
           </div>
+
+          {/* Match reason */}
+          {matchData?.reasonText && (
+            <div className="flex items-start gap-2 bg-latitud-orange/8 rounded-xl px-3 py-2.5 border border-latitud-orange/15 mb-6">
+              <Sparkles size={14} className="text-latitud-orange mt-0.5 shrink-0" />
+              <p className="text-latitud-black text-xs leading-relaxed">{matchData.reasonText}</p>
+            </div>
+          )}
 
           {/* Stats grid */}
           <div className="grid grid-cols-4 gap-3 mb-6">
@@ -168,7 +247,7 @@ export default function PropertyDetail() {
               <div className="grid grid-cols-2 gap-2">
                 {property.amenities.map(a => (
                   <div key={a} className="flex items-center gap-2 text-sm text-latitud-gray">
-                    <div className="w-1.5 h-1.5 rounded-full bg-latitud-orange" />
+                    <Check size={14} className="text-latitud-orange shrink-0" />
                     {a}
                   </div>
                 ))}
@@ -176,19 +255,27 @@ export default function PropertyDetail() {
             </div>
           )}
 
-          {/* Land area */}
-          {property.land_area > 0 && (
-            <div className="flex items-center justify-between py-3 border-t border-gray-100 mb-2">
-              <span className="text-sm text-latitud-gray">Terreno</span>
-              <span className="text-sm font-medium text-latitud-black">{property.land_area} m²</span>
-            </div>
-          )}
-          {property.year_built > 0 && (
-            <div className="flex items-center justify-between py-3 border-t border-gray-100 mb-2">
-              <span className="text-sm text-latitud-gray">Año de construcción</span>
-              <span className="text-sm font-medium text-latitud-black">{property.year_built}</span>
-            </div>
-          )}
+          {/* Extra details */}
+          <div className="space-y-0 mb-2">
+            {property.land_area > 0 && (
+              <div className="flex items-center justify-between py-3 border-t border-gray-100">
+                <span className="text-sm text-latitud-gray">Terreno</span>
+                <span className="text-sm font-medium text-latitud-black">{property.land_area} m²</span>
+              </div>
+            )}
+            {property.construction_area > 0 && (
+              <div className="flex items-center justify-between py-3 border-t border-gray-100">
+                <span className="text-sm text-latitud-gray">Construcción</span>
+                <span className="text-sm font-medium text-latitud-black">{property.construction_area} m²</span>
+              </div>
+            )}
+            {property.year_built > 0 && (
+              <div className="flex items-center justify-between py-3 border-t border-gray-100">
+                <span className="text-sm text-latitud-gray">Año de construcción</span>
+                <span className="text-sm font-medium text-latitud-black">{property.year_built}</span>
+              </div>
+            )}
+          </div>
 
           {/* Value phrase */}
           {property.value_phrase && (
@@ -200,23 +287,23 @@ export default function PropertyDetail() {
       </div>
 
       {/* Fixed bottom CTA */}
-      <div className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-100 px-5 py-4 flex gap-3">
-        <button 
+      <div className="fixed bottom-0 left-0 right-0 bg-white/95 backdrop-blur-sm border-t border-gray-100 px-5 py-4 flex gap-3">
+        <button
           onClick={() => navigate(-1)}
-          className="flex-1 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm"
+          className="px-5 py-3 rounded-xl border-2 border-latitud-black text-latitud-black font-semibold text-sm"
         >
           Volver
         </button>
-        <button 
+        <button
           onClick={() => setShowVisit(true)}
-          className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2"
+          className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
         >
           <Calendar size={16} />
-          Solicitar visita
+          Agendar visita
         </button>
       </div>
 
-      <VisitModal 
+      <VisitModal
         open={showVisit}
         onClose={() => setShowVisit(false)}
         property={property}

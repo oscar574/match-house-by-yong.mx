@@ -107,3 +107,9 @@ export function formatPrice(price, currency = 'MXN') {
   }
   return `$${price.toLocaleString()} ${currency}`;
 }
+
+// Exact price with full thousands separators (for cards and detail)
+export function formatPriceExact(price, currency = 'MXN') {
+  if (!price && price !== 0) return '';
+  return `$${Number(price).toLocaleString('es-MX')} ${currency}`;
+}
