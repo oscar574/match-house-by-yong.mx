@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, MapPin, Eye, EyeOff, ImageOff, BadgeCheck, AlertTriangle, Star } from 'lucide-react';
+import { RefreshCw, MapPin, Eye, EyeOff, ImageOff, BadgeCheck, AlertTriangle, Star, Copy, Split } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import { useToast } from '@/components/ui/use-toast';
+import { computeDuplicateFlags, countDuplicates, groupDuplicates } from '@/lib/duplicateDetection';
 
 export default function AdminProperties() {
   const { toast } = useToast();
@@ -12,13 +13,81 @@ export default function AdminProperties() {
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [filter, setFilter] = useState('Todas');
+  const [dupStats, setDupStats] = useState({ groups: 0, hidden: 0, total: 0 });
 
   useEffect(() => {
     base44.entities.Property.list('-created_date', 50).then(p => {
       setProperties(p);
+      setDupStats(countDuplicates(p));
       setLoading(false);
     });
   }, []);
+
+  const runDuplicateDetection = async () => {
+    const { updates } = computeDuplicateFlags(properties);
+    if (updates.length === 0) {
+      toast({ title: 'Sin cambios', description: 'No se encontraron nuevos duplicados.' });
+      return;
+    }
+    // Apply updates in batches
+    for (const u of updates) {
+      await base44.entities.Property.update(u.id, u.updates);
+    }
+    const updated = properties.map(p => {
+      const u = updates.find(x => x.id === p.id);
+      return u ? { ...p, ...u.updates } : p;
+    });
+    setProperties(updated);
+    setDupStats(countDuplicates(updated));
+    toast({ title: 'Detección completada', description: `${updates.length} propiedades actualizadas.` });
+  };
+
+  const setAsMaster = async (p) => {
+    // Clear this property's duplicate flags, set others in group as pointing to it
+    const groupId = p.duplicate_group_id;
+    if (!groupId) return;
+    const group = properties.filter(x => x.duplicate_group_id === groupId);
+    // Clear this one
+    await base44.entities.Property.update(p.id, {
+      is_duplicate: false,
+      duplicate_master_property_id: null,
+      duplicate_confidence_score: 100,
+      manual_review_required: false
+    });
+    // Set others to point to it
+    for (const other of group) {
+      if (other.id === p.id) continue;
+      await base44.entities.Property.update(other.id, {
+        is_duplicate: true,
+        duplicate_master_property_id: p.id,
+        duplicate_confidence_score: 90
+      });
+    }
+    const updated = properties.map(x => {
+      if (x.id === p.id) return { ...x, is_duplicate: false, duplicate_master_property_id: null, duplicate_confidence_score: 100 };
+      if (x.duplicate_group_id === groupId) return { ...x, is_duplicate: true, duplicate_master_property_id: p.id };
+      return x;
+    });
+    setProperties(updated);
+    setDupStats(countDuplicates(updated));
+    toast({ title: 'Propiedad principal actualizada' });
+  };
+
+  const separateFromGroup = async (p) => {
+    await base44.entities.Property.update(p.id, {
+      is_duplicate: false,
+      duplicate_group_id: null,
+      duplicate_master_property_id: null,
+      duplicate_confidence_score: 0,
+      manual_review_required: false
+    });
+    const updated = properties.map(x => x.id === p.id ? {
+      ...x, is_duplicate: false, duplicate_group_id: null, duplicate_master_property_id: null, duplicate_confidence_score: 0
+    } : x);
+    setProperties(updated);
+    setDupStats(countDuplicates(updated));
+    toast({ title: 'Propiedad separada del grupo' });
+  };
 
   const handleSync = () => {
     setSyncing(true);
@@ -63,6 +132,9 @@ export default function AdminProperties() {
     toast({ title: `Prioridad: ${newPriority}` });
   };
 
+  // Build duplicate groups for grouped view
+  const dupGroups = groupDuplicates(properties);
+
   // Filters
   const filtered = properties.filter(p => {
     switch (filter) {
@@ -71,13 +143,14 @@ export default function AdminProperties() {
       case 'Comisión': return p.commission_status === 'Confirmada';
       case 'Sin comisión': return p.commission_status !== 'Confirmada';
       case 'Duplicadas': return p.is_duplicate === true;
+      case 'Grupos dup': return !!p.duplicate_group_id;
       case 'Sin foto': return !p.cover_photo_url && (!p.photos || p.photos.length === 0);
       case 'Revisión': return p.manual_review_required === true;
       default: return true;
     }
   });
 
-  const filters = ['Todas', 'Visibles', 'Ocultas', 'Comisión', 'Sin comisión', 'Duplicadas', 'Sin foto', 'Revisión'];
+  const filters = ['Todas', 'Visibles', 'Ocultas', 'Comisión', 'Sin comisión', 'Duplicadas', 'Grupos dup', 'Sin foto', 'Revisión'];
 
   if (loading) {
     return (
@@ -100,7 +173,24 @@ export default function AdminProperties() {
           {syncing ? 'Sincronizando...' : 'Sincronizar EasyBroker'}
         </button>
       </div>
-      <p className="text-sm text-latitud-gray mb-5">{properties.length} propiedades · {filtered.length} en filtro</p>
+      <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
+
+      {/* Duplicate detection summary */}
+      <div className="bg-latitud-light rounded-xl p-3 mb-4 flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Copy size={16} className="text-latitud-orange" />
+          <div>
+            <p className="text-xs font-semibold text-latitud-black">{dupStats.groups} grupos de duplicados</p>
+            <p className="text-[10px] text-latitud-gray">{dupStats.hidden} propiedades ocultas al comprador</p>
+          </div>
+        </div>
+        <button
+          onClick={runDuplicateDetection}
+          className="text-xs font-semibold px-3 py-1.5 rounded-lg bg-latitud-orange text-white"
+        >
+          Detectar
+        </button>
+      </div>
 
       {/* Filters */}
       <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
@@ -207,6 +297,27 @@ export default function AdminProperties() {
                     >
                       <Star size={10} /> {p.manual_priority || 'Media'}
                     </button>
+                    {p.is_duplicate === true && (
+                      <>
+                        <button
+                          onClick={() => setAsMaster(p)}
+                          className="text-[10px] px-2 py-1 rounded-lg bg-latitud-orange/10 text-latitud-orange font-medium flex items-center gap-1"
+                        >
+                          <BadgeCheck size={10} /> Principal
+                        </button>
+                        <button
+                          onClick={() => separateFromGroup(p)}
+                          className="text-[10px] px-2 py-1 rounded-lg bg-gray-100 text-latitud-gray font-medium flex items-center gap-1"
+                        >
+                          <Split size={10} /> Separar
+                        </button>
+                      </>
+                    )}
+                    {p.is_duplicate === false && p.duplicate_group_id && (
+                      <span className="text-[10px] px-2 py-1 rounded-lg bg-green-50 text-green-600 font-medium flex items-center gap-1">
+                        <BadgeCheck size={10} /> Principal del grupo
+                      </span>
+                    )}
                   </div>
                 </div>
               </div>

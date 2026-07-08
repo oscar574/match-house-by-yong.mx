@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, MapPin, Bed, Bath, Calendar, Maximize } from 'lucide-
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto, getFallbackImage, getPropertyPhotos } from '@/lib/propertyImages';
+import { countDuplicates } from '@/lib/duplicateDetection';
 import LatitudLogo from '@/components/LatitudLogo';
 
 export default function Favorites() {
@@ -28,7 +29,7 @@ export default function Favorites() {
 
     setClient(clientData);
     const likedIds = reactions.map(r => r.property_id);
-    const liked = allProps.filter(p => likedIds.includes(p.id)).map(p => {
+    const liked = allProps.filter(p => likedIds.includes(p.id) && p.is_duplicate !== true).map(p => {
       const match = calculateMatch(p, clientData);
       return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
     }).sort((a, b) => b._matchPercentage - a._matchPercentage);

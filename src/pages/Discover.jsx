@@ -11,6 +11,7 @@ import InsightModal from '@/components/InsightModal';
 import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
 import { addLeadScore } from '@/lib/leadScoring';
+import { countDuplicates } from '@/lib/duplicateDetection';
 
 // Only show homes that generate commission for Latitud
 function isCommissionVisible(p) {
@@ -66,6 +67,11 @@ export default function Discover() {
     // Filter: only commission-visible, available, non-duplicate homes
     let available = allProps.filter(isCommissionVisible);
     available = available.filter(p => !reactedIds.includes(p.id));
+    // Hide duplicate copies - only masters visible
+    available = available.filter(p => p.is_duplicate !== true);
+
+    // Log duplicate stats for admin visibility
+    const dupStats = countDuplicates(allProps);
 
     // Enrich with match score
     if (clientData) {
