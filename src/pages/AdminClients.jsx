@@ -1,7 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Heart, Calendar, MapPin } from 'lucide-react';
+import { Search, Filter, Heart, Calendar, MapPin, Zap } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
+import { getLeadStatusLabel } from '@/lib/leadScoring';
 
 export default function AdminClients() {
   const [clients, setClients] = useState([]);
@@ -18,7 +19,7 @@ export default function AdminClients() {
 
   const filteredClients = clients.filter(c => {
     const matchesSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase());
-    const matchesFilter = filter === 'all' || c.intent_score === filter;
+    const matchesFilter = filter === 'all' || c.lead_status === filter;
     return matchesSearch && matchesFilter;
   });
 
@@ -49,15 +50,15 @@ export default function AdminClients() {
 
       {/* Filter pills */}
       <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
-        {['all', 'Alta intención', 'Intención media', 'Explorando'].map(f => (
+        {['all', 'prioridad máxima', 'alta intención', 'lead calificado', 'interesado', 'explorando'].map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
-            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors ${
+            className={`whitespace-nowrap px-3 py-1.5 rounded-full text-xs font-medium transition-colors capitalize ${
               filter === f ? 'bg-latitud-orange text-white' : 'bg-white text-latitud-gray border border-gray-100'
             }`}
           >
-            {f === 'all' ? 'Todos' : f}
+            {f === 'all' ? 'Todos' : getLeadStatusLabel(f)}
           </button>
         ))}
       </div>
@@ -76,15 +77,18 @@ export default function AdminClients() {
                   <p className="text-xs text-latitud-gray">{client.whatsapp}</p>
                 </div>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${
-                client.intent_score === 'Alta intención' ? 'bg-latitud-orange/10 text-latitud-orange' :
-                client.intent_score === 'Intención media' ? 'bg-yellow-50 text-yellow-600' :
+              <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${
+                (client.lead_status || 'evaluando') === 'prioridad máxima' ? 'bg-red-50 text-red-500' :
+                (client.lead_status || 'evaluando') === 'alta intención' ? 'bg-latitud-orange/10 text-latitud-orange' :
+                (client.lead_status || 'evaluando') === 'lead calificado' ? 'bg-green-50 text-green-600' :
+                (client.lead_status || 'evaluando') === 'interesado' ? 'bg-yellow-50 text-yellow-600' :
                 'bg-gray-100 text-latitud-gray'
               }`}>
-                {client.intent_score || 'Explorando'}
+                {getLeadStatusLabel(client.lead_status || 'evaluando')}
               </span>
             </div>
             <div className="flex items-center gap-4 text-xs text-latitud-gray">
+              <span className="flex items-center gap-1"><Zap size={10} className="text-latitud-orange" /> {client.lead_score || 0} pts</span>
               <span className="flex items-center gap-1"><MapPin size={10} /> {client.city || '—'}</span>
               <span className="flex items-center gap-1"><Heart size={10} className="text-red-400" /> {client.liked_count || 0}</span>
               <span className="flex items-center gap-1"><Calendar size={10} /> {client.visit_requests_count || 0} visitas</span>

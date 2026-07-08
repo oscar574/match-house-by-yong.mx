@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { RefreshCw, MapPin, Eye, EyeOff } from 'lucide-react';
+import { RefreshCw, MapPin, Eye, EyeOff, ImageOff, BadgeCheck, AlertTriangle, Star } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
+import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import { useToast } from '@/components/ui/use-toast';
 
 export default function AdminProperties() {
@@ -10,7 +11,7 @@ export default function AdminProperties() {
   const [properties, setProperties] = useState([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [filter, setFilter] = useState('Disponible');
+  const [filter, setFilter] = useState('Todas');
 
   useEffect(() => {
     base44.entities.Property.list('-created_date', 50).then(p => {
@@ -30,7 +31,53 @@ export default function AdminProperties() {
     }, 2000);
   };
 
-  const filtered = filter === 'Todas' ? properties : properties.filter(p => p.status === filter);
+  const updateProperty = async (id, updates) => {
+    await base44.entities.Property.update(id, updates);
+    setProperties(prev => prev.map(p => p.id === id ? { ...p, ...updates } : p));
+  };
+
+  const toggleVisibility = (p) => {
+    const newVisible = !(p.is_visible_in_app !== false);
+    updateProperty(p.id, { is_visible_in_app: newVisible, visible_to_clients: newVisible });
+    toast({ title: newVisible ? 'Propiedad visible' : 'Propiedad oculta' });
+  };
+
+  const confirmCommission = (p) => {
+    updateProperty(p.id, {
+      commission_status: 'Confirmada',
+      collaboration_enabled: true,
+      shared_commission: true,
+      commission_verified_at: new Date().toISOString()
+    });
+    toast({ title: 'Comisión confirmada' });
+  };
+
+  const markNoPhoto = (p) => {
+    updateProperty(p.id, { manual_review_required: true, is_visible_in_app: false, visible_to_clients: false });
+    toast({ title: 'Marcada como sin foto válida' });
+  };
+
+  const raisePriority = (p) => {
+    const newPriority = p.manual_priority === 'Alta' ? 'Media' : 'Alta';
+    updateProperty(p.id, { manual_priority: newPriority });
+    toast({ title: `Prioridad: ${newPriority}` });
+  };
+
+  // Filters
+  const filtered = properties.filter(p => {
+    switch (filter) {
+      case 'Visibles': return p.is_visible_in_app !== false && p.visible_to_clients !== false;
+      case 'Ocultas': return p.is_visible_in_app === false || p.visible_to_clients === false;
+      case 'Comisión': return p.commission_status === 'Confirmada';
+      case 'Sin comisión': return p.commission_status !== 'Confirmada';
+      case 'Duplicadas': return p.is_duplicate === true;
+      case 'Sin foto': return !p.cover_photo_url && (!p.photos || p.photos.length === 0);
+      case 'Revisión': return p.manual_review_required === true;
+      default: return true;
+    }
+  });
+
+  const filters = ['Todas', 'Visibles', 'Ocultas', 'Comisión', 'Sin comisión', 'Duplicadas', 'Sin foto', 'Revisión'];
 
   if (loading) {
     return (
@@ -53,11 +100,11 @@ export default function AdminProperties() {
           {syncing ? 'Sincronizando...' : 'Sincronizar EasyBroker'}
         </button>
       </div>
-      <p className="text-sm text-latitud-gray mb-5">{properties.length} propiedades en inventario</p>
+      <p className="text-sm text-latitud-gray mb-5">{properties.length} propiedades · {filtered.length} en filtro</p>
 
-      {/* Filter */}
+      {/* Filters */}
       <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">
-        {['Disponible', 'Apartada', 'Vendida', 'Rentada', 'Pausada', 'Todas'].map(f => (
+        {filters.map(f => (
           <button
             key={f}
             onClick={() => setFilter(f)}
@@ -72,41 +119,100 @@ export default function AdminProperties() {
 
       {/* Property list */}
       <div className="space-y-3">
-        {filtered.map(p => (
-          <Link key={p.id} to={`/property/${p.id}`} className="block bg-white rounded-2xl overflow-hidden shadow-sm">
-            <div className="flex">
-              <div className="w-28 h-28">
-                <img src={p.photos?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=400'} alt={p.title} className="w-full h-full object-cover" />
-              </div>
-              <div className="flex-1 p-3">
-                <div className="flex items-start justify-between">
-                  <div>
-                    <p className="text-sm font-semibold text-latitud-black leading-tight">{p.title}</p>
-                    <p className="text-latitud-orange font-bold text-sm">{formatPrice(p.price, p.currency)}</p>
-                  </div>
-                  {p.visible_to_clients ? (
-                    <Eye size={14} className="text-green-500 shrink-0" />
-                  ) : (
-                    <EyeOff size={14} className="text-latitud-gray/40 shrink-0" />
+        {filtered.map(p => {
+          const cover = getCoverPhoto(p);
+          const visible = p.is_visible_in_app !== false && p.visible_to_clients !== false;
+          const commissionOk = p.commission_status === 'Confirmada';
+          const hasPhoto = !!(p.cover_photo_url || (p.photos && p.photos.length > 0));
+
+          return (
+            <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm">
+              <div className="flex">
+                <div className="w-28 h-28 relative shrink-0">
+                  <img
+                    src={cover}
+                    alt={p.title}
+                    onError={(e) => { e.target.src = getFallbackImage(p); }}
+                    className="w-full h-full object-cover"
+                  />
+                  {!hasPhoto && (
+                    <div className="absolute inset-0 bg-latitud-light flex items-center justify-center">
+                      <ImageOff size={20} className="text-latitud-gray" />
+                    </div>
                   )}
                 </div>
-                <div className="flex items-center gap-1 text-xs text-latitud-gray mt-1">
-                  <MapPin size={10} />
-                  <span>{p.zone}, {p.city}</span>
-                </div>
-                <div className="flex items-center gap-2 mt-2">
-                  <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
-                    p.status === 'Disponible' ? 'bg-green-50 text-green-600' :
-                    p.status === 'Vendida' || p.status === 'Rentada' ? 'bg-red-50 text-red-500' :
-                    'bg-yellow-50 text-yellow-600'
-                  }`}>{p.status}</span>
-                  <span className="text-[10px] text-latitud-gray">{p.operation_type}</span>
-                  <span className="text-[10px] text-latitud-gray">{p.internal_code}</span>
+                <div className="flex-1 p-3 min-w-0">
+                  <div className="flex items-start justify-between gap-2">
+                    <Link to={`/property/${p.id}`} className="min-w-0">
+                      <p className="text-sm font-semibold text-latitud-black leading-tight truncate">{p.title}</p>
+                      <p className="text-latitud-orange font-bold text-sm">{formatPrice(p.price, p.currency)}</p>
+                    </Link>
+                    <div className="flex items-center gap-1 shrink-0">
+                      {commissionOk && <BadgeCheck size={14} className="text-green-500" />}
+                      {p.is_duplicate && <AlertTriangle size={14} className="text-yellow-500" />}
+                      {p.manual_review_required && <AlertTriangle size={14} className="text-red-400" />}
+                      {visible ? (
+                        <Eye size={14} className="text-green-500" />
+                      ) : (
+                        <EyeOff size={14} className="text-latitud-gray/40" />
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1 text-xs text-latitud-gray mt-1">
+                    <MapPin size={10} />
+                    <span className="truncate">{p.zone}, {p.city}</span>
+                  </div>
+                  <div className="flex items-center gap-2 mt-2 flex-wrap">
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      p.status === 'Disponible' ? 'bg-green-50 text-green-600' :
+                      p.status === 'Vendida' || p.status === 'Rentada' ? 'bg-red-50 text-red-500' :
+                      'bg-yellow-50 text-yellow-600'
+                    }`}>{p.status}</span>
+                    <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
+                      commissionOk ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-latitud-gray'
+                    }`}>{p.commission_status || 'Sin comisión'}</span>
+                    <span className="text-[10px] text-latitud-gray">{p.construction_area || 0}m²</span>
+                    <span className="text-[10px] text-latitud-gray">{p.bedrooms || 0} rec</span>
+                  </div>
+
+                  {/* Quick actions */}
+                  <div className="flex items-center gap-1.5 mt-2 flex-wrap">
+                    <button
+                      onClick={() => toggleVisibility(p)}
+                      className="text-[10px] px-2 py-1 rounded-lg bg-latitud-light text-latitud-gray font-medium"
+                    >
+                      {visible ? 'Ocultar' : 'Mostrar'}
+                    </button>
+                    {!commissionOk && (
+                      <button
+                        onClick={() => confirmCommission(p)}
+                        className="text-[10px] px-2 py-1 rounded-lg bg-green-50 text-green-600 font-medium"
+                      >
+                        Confirmar comisión
+                      </button>
+                    )}
+                    {hasPhoto && (
+                      <button
+                        onClick={() => markNoPhoto(p)}
+                        className="text-[10px] px-2 py-1 rounded-lg bg-gray-100 text-latitud-gray font-medium"
+                      >
+                        Sin foto
+                      </button>
+                    )}
+                    <button
+                      onClick={() => raisePriority(p)}
+                      className={`text-[10px] px-2 py-1 rounded-lg font-medium flex items-center gap-1 ${
+                        p.manual_priority === 'Alta' ? 'bg-latitud-orange/10 text-latitud-orange' : 'bg-gray-100 text-latitud-gray'
+                      }`}
+                    >
+                      <Star size={10} /> {p.manual_priority || 'Media'}
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>
-          </Link>
-        ))}
+          );
+        })}
       </div>
     </div>
   );

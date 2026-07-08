@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MapPin, Bed, Bath } from 'lucide-react';
+import { ArrowLeft, Heart, MapPin, Bed, Bath, Calendar, Maximize } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
+import { getCoverPhoto, getFallbackImage, getPropertyPhotos } from '@/lib/propertyImages';
 import LatitudLogo from '@/components/LatitudLogo';
 
 export default function Favorites() {
@@ -70,14 +71,16 @@ export default function Favorites() {
             </button>
           </div>
         ) : (
-          likedProperties.map(property => (
+          likedProperties.map(property => {
+            const propertyPhotos = getPropertyPhotos(property);
+            return (
             <button 
               key={property.id} 
               onClick={() => navigate(`/property/${property.id}`)}
               className="w-full bg-white rounded-2xl overflow-hidden shadow-sm text-left"
             >
               <div className="relative h-48">
-                <img src={property.photos?.[0] || 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=800'} alt={property.title} className="w-full h-full object-cover" />
+                <img src={propertyPhotos[0] || getCoverPhoto(property)} alt={property.title} onError={(e) => { e.target.src = getFallbackImage(property); }} className="w-full h-full object-cover" />
                 <div className="absolute top-3 right-3">
                   <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full">
                     {property._matchPercentage}%
@@ -96,15 +99,29 @@ export default function Favorites() {
                   <MapPin size={12} />
                   <span>{property.zone}, {property.city}</span>
                 </div>
-                <div className="flex items-center gap-4 text-latitud-gray text-xs">
-                  {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={12} /> {property.bedrooms} rec.</span>}
-                  {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={12} /> {property.bathrooms} baños</span>}
-                  {property.construction_area > 0 && <span>{property.construction_area}m²</span>}
+                <div className="flex items-center gap-3 text-latitud-gray text-xs">
+                  {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={12} /> {property.bedrooms}</span>}
+                  {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={12} /> {property.bathrooms}</span>}
+                  {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={12} /> {property.construction_area}m²</span>}
                 </div>
-                <p className="text-xs text-latitud-orange/70 mt-2">{property._matchReason}</p>
+                <div className="flex gap-2 mt-3">
+                  <button
+                    onClick={(e) => { e.stopPropagation(); navigate(`/property/${property.id}`); }}
+                    className="flex-1 text-xs font-semibold py-2 rounded-xl border border-latitud-black text-latitud-black"
+                  >
+                    Ver detalle
+                  </button>
+                  <button
+                    onClick={(e) => { e.stopPropagation(); }}
+                    className="flex-1 text-xs font-semibold py-2 rounded-xl bg-latitud-orange text-white flex items-center justify-center gap-1"
+                  >
+                    <Calendar size={12} /> Agendar
+                  </button>
+                </div>
               </div>
             </button>
-          ))
+          );
+          })
         )}
       </div>
     </div>

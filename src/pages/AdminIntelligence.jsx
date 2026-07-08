@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { MapPin, ThumbsDown, Heart, Calendar, TrendingUp, Building2, Award } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 
