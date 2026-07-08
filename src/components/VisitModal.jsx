@@ -156,6 +156,9 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
                       placeholder="Tu correo"
                       className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
                     />
+                    {email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && (
+                      <p className="text-[10px] text-red-500 mt-1">Ingresa un correo válido</p>
+                    )}
                   </div>
                 </div>
 
@@ -201,7 +204,7 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
 
               <button
                 onClick={handleSubmit}
-                disabled={!name || !phone || !date || !time || saving}
+                disabled={!name || !phone || !date || !time || saving || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)}
                 className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 mt-6 active:scale-[0.99] transition-transform accent-glow"
               >
                 {saving ? (

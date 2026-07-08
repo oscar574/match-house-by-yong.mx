@@ -164,14 +164,17 @@ export default function AdminProperties() {
     <div className="px-4 py-6">
       <div className="flex items-center justify-between mb-1">
         <h1 className="font-heading text-2xl text-latitud-black">MatchHouse Properties</h1>
-        <button
-          onClick={handleSync}
-          disabled={syncing}
-          className="flex items-center gap-2 bg-latitud-orange text-white text-xs font-semibold px-4 py-2 rounded-xl disabled:opacity-50"
-        >
-          <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
-          {syncing ? 'Sincronizando...' : 'Sincronizar EasyBroker'}
-        </button>
+        <div className="flex flex-col items-end gap-1">
+          <button
+            disabled
+            title="EasyBroker sync will be enabled when API key is configured."
+            className="flex items-center gap-2 bg-gray-100 text-latitud-gray text-xs font-semibold px-4 py-2 rounded-xl cursor-not-allowed"
+          >
+            <RefreshCw size={14} />
+            Sync EasyBroker
+          </button>
+          <span className="text-[10px] text-latitud-gray">EasyBroker sync will be enabled when API key is configured.</span>
+        </div>
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
 

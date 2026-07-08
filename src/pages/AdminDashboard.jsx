@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Users, Heart, Calendar, AlertTriangle, TrendingUp, Building2, ThumbsDown, MapPin } from 'lucide-react';
+import { Users, Heart, Calendar, AlertTriangle, TrendingUp, Building2, ThumbsDown, MapPin, ListTodo, ChevronRight, CheckCircle2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice } from '@/lib/matchEngine';
 
@@ -13,11 +13,12 @@ export default function AdminDashboard() {
   }, []);
 
   const loadDashboard = async () => {
-    const [clients, reactions, visits, properties] = await Promise.all([
+    const [clients, reactions, visits, properties, tasks] = await Promise.all([
       base44.entities.Client.list('-created_date', 50),
       base44.entities.Reaction.list('-created_date', 50),
       base44.entities.VisitRequest.list('-created_date', 50),
-      base44.entities.Property.list('-created_date', 50)
+      base44.entities.Property.list('-created_date', 50),
+      base44.entities.Task.list('-created_date', 100)
     ]);
 
     const likes = reactions.filter(r => r.reaction_type === 'like');
@@ -59,6 +60,9 @@ export default function AdminDashboard() {
     const avgBudget = budgets.length > 0 ? budgets.reduce((a, b) => a + b, 0) / budgets.length : 0;
 
     setData({
+      totalClients: clients.length,
+      pendingTasks: tasks.filter(t => t.status === 'Pendiente').length,
+      viewsCount: reactions.filter(r => r.reaction_type === 'view').length,
       newClients: newClients.length,
       onboarded: onboarded.length,
       withLikes: withLikes.length,
@@ -86,12 +90,14 @@ export default function AdminDashboard() {
   }
 
   const stats = [
-    { label: 'Leads nuevos', value: data.newClients, icon: Users, color: 'bg-latitud-orange/10 text-latitud-orange' },
-    { label: 'Onboarding completo', value: data.onboarded, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
+    { label: 'Clientes', value: data.totalClients, icon: Users, color: 'bg-latitud-orange/10 text-latitud-orange' },
+    { label: 'Leads nuevos', value: data.newClients, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
     { label: 'Con likes', value: data.withLikes, icon: Heart, color: 'bg-red-50 text-red-500' },
-    { label: 'Visitas pendientes', value: data.pendingVisits, icon: Calendar, color: 'bg-[#EAF2FF] text-latitud-orange' },
-    { label: 'Alta intención', value: data.highIntent, icon: AlertTriangle, color: 'bg-yellow-50 text-yellow-600' },
+    { label: 'Citas solicitadas', value: data.pendingVisits, icon: Calendar, color: 'bg-[#EAF2FF] text-latitud-orange' },
+    { label: 'Propiedades vistas', value: data.viewsCount, icon: Building2, color: 'bg-gray-100 text-latitud-gray' },
     { label: 'Propiedades activas', value: data.totalProperties, icon: Building2, color: 'bg-gray-100 text-latitud-gray' },
+    { label: 'Tareas pendientes', value: data.pendingTasks, icon: ListTodo, color: 'bg-yellow-50 text-yellow-600' },
+    { label: 'Alta intención', value: data.highIntent, icon: AlertTriangle, color: 'bg-yellow-50 text-yellow-600' },
   ];
 
   return (
@@ -113,6 +119,40 @@ export default function AdminDashboard() {
             </div>
           );
         })}
+      </div>
+
+      {/* Quick access */}
+      <div className="grid grid-cols-3 gap-2 mb-6">
+        <Link to="/admin/clients" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <Users size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Clientes</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
+        <Link to="/admin/visits" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <Calendar size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Citas</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
+        <Link to="/admin/properties" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <Building2 size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Propiedades</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
+        <Link to="/admin/intelligence" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <TrendingUp size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Intelligence</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
+        <Link to="/admin/tasks" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <ListTodo size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Tareas</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
+        <Link to="/admin/demo-checklist" className="bg-white rounded-2xl p-3 shadow-sm flex flex-col gap-1">
+          <CheckCircle2 size={16} className="text-latitud-orange" />
+          <span className="text-xs font-medium text-latitud-black">Demo Checklist</span>
+          <ChevronRight size={12} className="text-latitud-gray/50" />
+        </Link>
       </div>
 
       {/* Ticket promedio */}
