@@ -8,16 +8,22 @@ export const LEAD_ACTIONS = {
   VIEW_ALL_PHOTOS: { points: 4, label: 'Ver todas las fotos' },
   REOPEN_PROPERTY: { points: 6, label: 'Volver a abrir propiedad' },
   SAVE_FAVORITE: { points: 8, label: 'Guardar favorita' },
+  SAVE_3_FAVORITES: { points: 10, label: 'Guardar 3 favoritas (bonus)' },
+  SAVE_5_FAVORITES: { points: 15, label: 'Guardar 5 favoritas (bonus)' },
   COMPARE_PROPERTIES: { points: 8, label: 'Comparar propiedades' },
   SHARE_PROPERTY: { points: 15, label: 'Compartir propiedad' },
   REQUEST_INFO: { points: 12, label: 'Solicitar información' },
-  REQUEST_VISIT: { points: 30, label: 'Solicitar cita' },
+  REQUEST_VISIT: { points: 30, label: 'Solicitar visita' },
+  REQUEST_TOUR: { points: 35, label: 'Solicitar recorrido' },
+  OPEN_WHATSAPP: { points: 20, label: 'Abrir WhatsApp' },
   COMPLETE_PROFILE: { points: 10, label: 'Completar perfil' }
 };
 
+// 0-14 explorando · 15-34 interesado · 35-59 lead calificado · 60+ alta intención
+// recorrido solicitado = prioridad máxima
 export function getLeadStatus(score, hasVisitRequest = false) {
   if (hasVisitRequest) return 'prioridad máxima';
-  if (score >= 50) return 'alta intención';
+  if (score >= 60) return 'alta intención';
   if (score >= 35) return 'lead calificado';
   if (score >= 15) return 'interesado';
   return 'explorando';
@@ -42,10 +48,9 @@ export function addLeadScore(currentScore, action, hasVisitRequest = false) {
 }
 
 // Build a client update object that keeps buyer_intent_score, lead_score and lead_status in sync.
-// Pass the current client object (or null) and an action key from LEAD_ACTIONS.
 export function buildIntentUpdate(client, action) {
   const current = client?.buyer_intent_score ?? client?.lead_score ?? 0;
-  const hasVisit = (client?.visit_requests_count || 0) > 0 || action === 'REQUEST_VISIT';
+  const hasVisit = (client?.visit_requests_count || 0) > 0 || action === 'REQUEST_VISIT' || action === 'REQUEST_TOUR';
   const { score, status } = addLeadScore(current, action, hasVisit);
   return {
     buyer_intent_score: score,

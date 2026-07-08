@@ -143,8 +143,11 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
                 <CheckCircle size={32} className="text-[#C9A45C]" />
               </div>
               <h3 className="font-heading text-xl text-latitud-black mb-2">Listo.</h3>
-              <p className="text-sm text-latitud-gray max-w-xs mx-auto">
+              <p className="text-sm text-latitud-gray max-w-xs mx-auto mb-2">
                 Recibimos tu solicitud de visita. Un asesor te confirmará por WhatsApp.
+              </p>
+              <p className="text-[11px] text-latitud-gray/70 max-w-xs mx-auto">
+                También puedes guardar más propiedades y solicitar un recorrido completo.
               </p>
             </div>
           ) : loadingClient ? (

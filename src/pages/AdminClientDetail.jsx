@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send } from 'lucide-react';
+import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send, Eye } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
+import { getCoverPhoto } from '@/lib/propertyImages';
 
 const WA_MESSAGES = [
   { label: 'Enviar selección', template: 'Hola, [Nombre]. Vi que te gustaron algunas propiedades en [Zona]. Te preparé una selección más cercana a lo que buscas. ¿Te la envío por aquí?' },
@@ -17,6 +18,8 @@ export default function AdminClientDetail() {
   const [client, setClient] = useState(null);
   const [reactions, setReactions] = useState([]);
   const [visits, setVisits] = useState([]);
+  const [tours, setTours] = useState([]);
+  const [allProps, setAllProps] = useState([]);
   const [recommended, setRecommended] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -25,16 +28,19 @@ export default function AdminClientDetail() {
   }, [id]);
 
   const loadClient = async () => {
-    const [clientData, allReactions, allVisits, allProps] = await Promise.all([
+    const [clientData, allReactions, allVisits, allTours, allProps] = await Promise.all([
       base44.entities.Client.get(id),
       base44.entities.Reaction.filter({ client_id: id }),
       base44.entities.VisitRequest.filter({ client_id: id }),
-      base44.entities.Property.filter({ status: 'Disponible', visible_to_clients: true })
+      base44.entities.TourRequest.filter({ client_id: id }),
+      base44.entities.Property.list('-created_date', 200)
     ]);
 
     setClient(clientData);
     setReactions(allReactions);
     setVisits(allVisits);
+    setTours(allTours);
+    setAllProps(allProps);
 
     // Recommended properties
     const reactedIds = allReactions.map(r => r.property_id);
@@ -77,6 +83,7 @@ export default function AdminClientDetail() {
 
   const likes = reactions.filter(r => r.reaction_type === 'like');
   const dislikes = reactions.filter(r => r.reaction_type === 'dislike');
+  const propMap = Object.fromEntries(allProps.map(p => [p.id, p]));
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -177,20 +184,73 @@ export default function AdminClientDetail() {
         </div>
       </div>
 
-      {/* Liked properties */}
-      {likes.length > 0 && (
-        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
-          <h3 className="font-semibold text-sm text-latitud-black mb-3 flex items-center gap-2">
-            <Heart size={14} className="text-red-400" /> Propiedades con like
-          </h3>
-          {likes.map(r => (
-            <div key={r.id} className="py-2 border-b border-gray-50 last:border-0">
-              <p className="text-sm text-latitud-black">{r.property_title}</p>
-              <p className="text-xs text-latitud-gray">{r.property_zone} · {formatPrice(r.property_price)}</p>
-            </div>
-          ))}
+      {/* Selección del comprador */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+        <h3 className="font-semibold text-sm text-latitud-black mb-3 flex items-center gap-2">
+          <Heart size={14} className="text-[#C9A45C]" /> Selección del comprador
+        </h3>
+        <div className="grid grid-cols-4 gap-2 mb-4">
+          <div className="bg-latitud-light rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-latitud-black">{likes.length}</p>
+            <p className="text-[10px] text-latitud-gray">Favoritas</p>
+          </div>
+          <div className="bg-latitud-light rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-latitud-black">{tours.length}</p>
+            <p className="text-[10px] text-latitud-gray">Recorridos</p>
+          </div>
+          <div className="bg-latitud-light rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-latitud-black">{dislikes.length}</p>
+            <p className="text-[10px] text-latitud-gray">Descartadas</p>
+          </div>
+          <div className="bg-latitud-light rounded-lg p-2 text-center">
+            <p className="text-lg font-bold text-latitud-black">{reactions.filter(r => r.reaction_type === 'view').length}</p>
+            <p className="text-[10px] text-latitud-gray">Vistas</p>
+          </div>
         </div>
-      )}
+
+        {likes.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs text-latitud-gray mb-2">Propiedades favoritas</p>
+            {likes.map(r => {
+              const p = propMap[r.property_id];
+              return (
+                <div key={r.id} className="flex items-center gap-3 py-2 border-b border-gray-50 last:border-0">
+                  {p && (
+                    <img src={getCoverPhoto(p)} alt="" className="w-12 h-12 rounded-lg object-cover shrink-0" />
+                  )}
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm text-latitud-black truncate">{r.property_title}</p>
+                    <p className="text-xs text-latitud-gray truncate">
+                      {r.property_zone} · {formatPrice(r.property_price)}{p?.construction_area ? ` · ${p.construction_area}m²` : ''}
+                    </p>
+                  </div>
+                  <button onClick={() => navigate(`/property/${r.property_id}`)} className="text-[10px] text-latitud-orange font-semibold flex items-center gap-1 shrink-0">
+                    <Eye size={11} /> Ver
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        )}
+
+        {client.preferred_amenities?.length > 0 && (
+          <div className="mb-3">
+            <p className="text-xs text-latitud-gray mb-1">Amenidades más buscadas</p>
+            <div className="flex flex-wrap gap-1.5">
+              {client.preferred_amenities.map(a => (
+                <span key={a} className="text-[11px] bg-latitud-orange/10 text-latitud-orange px-2 py-0.5 rounded-full">{a}</span>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {dislikes.length > 0 && (
+          <div>
+            <p className="text-xs text-latitud-gray mb-1">Descartadas</p>
+            <p className="text-[11px] text-latitud-gray/70">{dislikes.map(d => d.property_title).join(' · ')}</p>
+          </div>
+        )}
+      </div>
 
       {/* Rejection reasons */}
       {dislikes.filter(d => d.dislike_reason).length > 0 && (

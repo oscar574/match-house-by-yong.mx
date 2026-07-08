@@ -117,7 +117,7 @@ export default function PropertyDetail() {
       if (current < 35 && score >= 35) {
         ensureLeadTask({ clientId, clientName: c.name, advisor: c.assigned_advisor, title: `Lead calificado — contactar a ${c.name}`, taskType: 'Seguimiento', priority: 'Alta' });
       }
-      if (current < 50 && score >= 50) {
+      if (current < 60 && score >= 60) {
         ensureLeadTask({ clientId, clientName: c.name, advisor: c.assigned_advisor, title: `Cliente alta intención — ${c.name}`, taskType: 'Contacto prioritario', priority: 'Alta' });
       }
     } catch (e) { /* ignore */ }
@@ -422,7 +422,7 @@ export default function PropertyDetail() {
           className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
         >
           <Calendar size={16} />
-          Agendar visita
+          Solicitar visita de esta propiedad
         </button>
       </div>
 

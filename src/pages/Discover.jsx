@@ -12,6 +12,7 @@ import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
+import { useToast } from '@/components/ui/use-toast';
 
 // Only show homes that generate commission
 function isCommissionVisible(p) {
@@ -37,6 +38,7 @@ export default function Discover() {
   const [reactionCount, setReactionCount] = useState(0);
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadData();
@@ -127,6 +129,11 @@ export default function Discover() {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) return;
 
+    if (type === 'like' && (client?.liked_count || 0) >= 20) {
+      toast({ title: 'Límite alcanzado', description: 'Ya tienes 20 propiedades guardadas. Elimina alguna para agregar nuevas opciones.' });
+      return;
+    }
+
     await base44.entities.Reaction.create({
       client_id: clientId,
       property_id: currentProperty.id,
@@ -142,9 +149,13 @@ export default function Discover() {
     // Update client counts + lead score
     const updates = { last_activity_date: new Date().toISOString() };
     let action = null;
+    let bonusAction = null;
     if (type === 'like') {
-      updates.liked_count = (client?.liked_count || 0) + 1;
+      const newLiked = (client?.liked_count || 0) + 1;
+      updates.liked_count = newLiked;
       action = 'SAVE_FAVORITE';
+      if (newLiked === 3) bonusAction = 'SAVE_3_FAVORITES';
+      if (newLiked === 5) bonusAction = 'SAVE_5_FAVORITES';
     }
     if (type === 'dislike') {
       updates.disliked_count = (client?.disliked_count || 0) + 1;
@@ -165,6 +176,22 @@ export default function Discover() {
     updates.buyer_intent_score = newScore;
     updates.lead_status = newStatus;
     setLeadScore(newScore);
+
+    if (bonusAction) {
+      const b = addLeadScore(updates.lead_score, bonusAction, hasVisit);
+      updates.lead_score = b.score;
+      updates.buyer_intent_score = b.score;
+      updates.lead_status = b.status;
+      setLeadScore(b.score);
+    }
+
+    if (type === 'like') {
+      toast({ title: 'Agregada a tu selección.' });
+      const newLiked = (client?.liked_count || 0) + 1;
+      if (newLiked >= 3) {
+        toast({ title: 'Ya tienes varias propiedades guardadas.', description: 'Puedes solicitar un recorrido cuando quieras.' });
+      }
+    }
 
     // Maintenance: keep arrays short
     if (type === 'like' && client?.favorite_property_ids) {
@@ -290,7 +317,7 @@ export default function Discover() {
             </div>
             <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-white/30 tracking-wider uppercase">
               <span className="w-14 text-center">Descartar</span>
-              <span className="w-16 text-center">Me gusta</span>
+              <span className="w-16 text-center">Guardar</span>
               <span className="w-14 text-center">Agendar</span>
               <span className="w-14 text-center">Detalles</span>
             </div>

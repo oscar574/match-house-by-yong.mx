@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MapPin, Bed, Bath, Maximize, Calendar, Trash2, Sparkles } from 'lucide-react';
+import { ArrowLeft, Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, Compass, DollarSign } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
-import VisitModal from '@/components/VisitModal';
+import TourRequestModal from '@/components/TourRequestModal';
 import PropertyThumb from '@/components/PropertyThumb';
 import LatitudLogo from '@/components/LatitudLogo';
 
@@ -27,7 +27,7 @@ export default function Favorites() {
   const [alsoLike, setAlsoLike] = useState([]);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [visitProperty, setVisitProperty] = useState(null);
+  const [showTour, setShowTour] = useState(false);
 
   useEffect(() => {
     loadFavorites();
@@ -52,7 +52,6 @@ export default function Favorites() {
 
     setLikedProperties(liked);
 
-    // "También te pueden gustar": not liked, similar by zone/price/beds/amenities
     const also = allProps
       .filter(p => !likedIds.includes(p.id) && p.is_duplicate !== true)
       .map(p => ({ ...p, _sim: similarityScore(p, clientData), _match: calculateMatch(p, clientData).percentage }))
@@ -88,11 +87,13 @@ export default function Favorites() {
     );
   }
 
+  const atLimit = likedProperties.length >= 20;
+
   return (
     <div className="min-h-screen bg-latitud-black">
       {/* Header */}
       <div className="px-5 pt-6 pb-4 sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
-        <div className="flex items-center justify-between mb-5">
+        <div className="flex items-center justify-between mb-4">
           <button onClick={() => navigate('/discover')} className="p-1 -ml-1">
             <ArrowLeft size={22} className="text-white" />
           </button>
@@ -101,94 +102,117 @@ export default function Favorites() {
         </div>
         <div className="flex items-center gap-2 mb-1">
           <Heart size={18} className="text-latitud-orange" fill="currentColor" />
-          <h1 className="font-heading text-2xl text-white">Mis favoritas</h1>
+          <h1 className="font-heading text-2xl text-white">Mi selección</h1>
         </div>
-        <p className="text-sm text-white/50">{likedProperties.length} propiedades guardadas</p>
+        <p className="text-sm text-white/50 leading-snug">
+          {likedProperties.length > 0
+            ? 'Estas son las propiedades que más encajan contigo. Tu asesor podrá ayudarte a organizar un recorrido.'
+            : 'Aún no tienes propiedades guardadas.'}
+        </p>
       </div>
 
       {/* List */}
-      <div className="px-4 py-4 space-y-4 pb-28">
+      <div className="px-4 py-4 space-y-4 pb-36">
+        {/* Profile summary */}
+        {likedProperties.length > 0 && client && (
+          <div className="bg-white/[0.06] rounded-2xl p-4 border border-white/10">
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div>
+                <DollarSign size={14} className="text-latitud-orange mx-auto mb-1" />
+                <p className="text-[11px] text-white font-semibold leading-tight">{client.budget_range || '—'}</p>
+                <p className="text-[9px] text-white/40">Presupuesto</p>
+              </div>
+              <div>
+                <MapPin size={14} className="text-latitud-orange mx-auto mb-1" />
+                <p className="text-[11px] text-white font-semibold leading-tight truncate">{(client.favorite_zones || []).slice(0, 2).join(', ') || '—'}</p>
+                <p className="text-[9px] text-white/40">Zonas</p>
+              </div>
+              <div>
+                <Heart size={14} className="text-latitud-orange mx-auto mb-1" />
+                <p className="text-[11px] text-white font-semibold leading-tight">{likedProperties.length} guardadas</p>
+                <p className="text-[9px] text-white/40">Selección</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {likedProperties.length === 0 ? (
           <div className="text-center py-20">
             <Heart size={40} className="text-white/20 mx-auto mb-3" />
-            <p className="text-white/70 text-base mb-2">Todavía no tienes propiedades favoritas.</p>
+            <p className="text-white/70 text-base mb-2">Tu selección está vacía.</p>
             <p className="text-white/40 text-sm mb-6 max-w-xs mx-auto">
-              Guarda las casas que te gusten para compararlas y agendar una visita.
+              Guarda las casas que te gusten y solicita un recorrido cuando estés listo.
             </p>
             <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
               Descubrir propiedades
             </button>
           </div>
         ) : (
-          likedProperties.map(property => {
-            const cover = getCoverPhoto(property);
-            return (
-            <div
-              key={property.id}
-              onClick={() => navigate(`/property/${property.id}`)}
-              className="bg-white/[0.04] rounded-2xl overflow-hidden border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
-            >
-              <div className="relative h-52">
-                <img
-                  src={cover}
-                  alt={property.title}
-                  onError={(e) => { e.target.src = getFallbackImage(property); }}
-                  className="w-full h-full object-cover"
-                />
-                <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-                <div className="absolute top-3 right-3">
-                  <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                    {property._matchPercentage}% match
-                  </span>
-                </div>
-                <div className="absolute top-3 left-3">
-                  <span className="bg-white/90 backdrop-blur-sm text-latitud-black text-xs font-semibold px-2.5 py-1 rounded-full">
-                    {property.operation_type}
-                  </span>
-                </div>
-                {property._matchReason && (
-                  <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
-                    <Sparkles size={12} className="text-latitud-orange mt-0.5 shrink-0" />
-                    <p className="text-white/90 text-[11px] leading-snug">{property._matchReason}</p>
+          <>
+            {atLimit && (
+              <div className="bg-[#E6D3A3]/15 border border-[#C9A45C]/30 rounded-xl p-3 text-center">
+                <p className="text-[11px] text-[#E6D3A3]">Ya tienes 20 propiedades guardadas. Elimina alguna para agregar nuevas opciones.</p>
+              </div>
+            )}
+            {likedProperties.map(property => {
+              const cover = getCoverPhoto(property);
+              return (
+                <div
+                  key={property.id}
+                  onClick={() => navigate(`/property/${property.id}`)}
+                  className="bg-white/[0.04] rounded-2xl overflow-hidden border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
+                >
+                  <div className="relative h-52">
+                    <img
+                      src={cover}
+                      alt={property.title}
+                      onError={(e) => { e.target.src = getFallbackImage(property); }}
+                      className="w-full h-full object-cover"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+                    <div className="absolute top-3 right-3">
+                      <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                        {property._matchPercentage}% match
+                      </span>
+                    </div>
+                    {property._matchReason && (
+                      <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
+                        <Sparkles size={12} className="text-latitud-orange mt-0.5 shrink-0" />
+                        <p className="text-white/90 text-[11px] leading-snug">{property._matchReason}</p>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-              <div className="p-4">
-                <p className="text-latitud-orange font-bold text-lg mb-1">{formatPriceExact(property.price, property.currency)}</p>
-                <h3 className="font-heading text-base text-white leading-tight mb-1.5">{property.title}</h3>
-                <div className="flex items-center gap-1 text-white/50 text-xs mb-3">
-                  <MapPin size={12} />
-                  <span>{property.zone}, {property.city}</span>
+                  <div className="p-4">
+                    <p className="text-latitud-orange font-bold text-lg mb-1">{formatPriceExact(property.price, property.currency)}</p>
+                    <h3 className="font-heading text-base text-white leading-tight mb-1.5">{property.title}</h3>
+                    <div className="flex items-center gap-1 text-white/50 text-xs mb-3">
+                      <MapPin size={12} />
+                      <span>{property.zone}, {property.city}</span>
+                    </div>
+                    <div className="flex items-center gap-4 text-white/70 text-xs mb-4">
+                      {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={13} /> {property.bedrooms}</span>}
+                      {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={13} /> {property.bathrooms}</span>}
+                      {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={13} /> {property.construction_area} m²</span>}
+                    </div>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={(e) => { e.stopPropagation(); navigate(`/property/${property.id}`); }}
+                        className="flex-1 text-xs font-semibold py-2.5 rounded-xl border border-white/20 text-white"
+                      >
+                        Ver detalle
+                      </button>
+                      <button
+                        onClick={(e) => { e.stopPropagation(); removeFavorite(property); }}
+                        className="px-4 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center gap-1.5"
+                      >
+                        <Trash2 size={14} /> Quitar
+                      </button>
+                    </div>
+                  </div>
                 </div>
-                <div className="flex items-center gap-4 text-white/70 text-xs mb-4">
-                  {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={13} /> {property.bedrooms}</span>}
-                  {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={13} /> {property.bathrooms}</span>}
-                  {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={13} /> {property.construction_area} m²</span>}
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    onClick={(e) => { e.stopPropagation(); navigate(`/property/${property.id}`); }}
-                    className="flex-1 text-xs font-semibold py-2.5 rounded-xl border border-white/20 text-white"
-                  >
-                    Ver detalle
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setVisitProperty(property); }}
-                    className="flex-1 text-xs font-semibold py-2.5 rounded-xl bg-latitud-orange text-white flex items-center justify-center gap-1.5"
-                  >
-                    <Calendar size={13} /> Agendar
-                  </button>
-                  <button
-                    onClick={(e) => { e.stopPropagation(); removeFavorite(property); }}
-                    className="px-3 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
-              </div>
-            </div>
-          );
-          })
+              );
+            })}
+          </>
         )}
 
         {/* También te pueden gustar */}
@@ -205,13 +229,31 @@ export default function Favorites() {
         )}
       </div>
 
-      <VisitModal
-        open={!!visitProperty}
-        onClose={() => setVisitProperty(null)}
-        property={visitProperty}
+      {/* Sticky CTA */}
+      {likedProperties.length > 0 && (
+        <div className="fixed bottom-0 left-0 right-0 bg-latitud-black/95 backdrop-blur-sm border-t border-white/10 px-4 py-3 flex gap-3 z-40">
+          <button
+            onClick={() => navigate('/discover')}
+            className="px-4 py-3 rounded-xl border border-white/20 text-white/80 font-semibold text-sm flex items-center gap-1.5"
+          >
+            <Compass size={15} /> Seguir explorando
+          </button>
+          <button
+            onClick={() => setShowTour(true)}
+            className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
+          >
+            <Calendar size={16} /> Solicitar recorrido
+          </button>
+        </div>
+      )}
+
+      <TourRequestModal
+        open={showTour}
+        onClose={() => setShowTour(false)}
+        properties={likedProperties}
+        client={client}
         clientId={localStorage.getItem('latitud_client_id')}
-        clientName={localStorage.getItem('latitud_client_name')}
-        onSubmit={() => setVisitProperty(null)}
+        onSubmit={() => setShowTour(false)}
       />
     </div>
   );

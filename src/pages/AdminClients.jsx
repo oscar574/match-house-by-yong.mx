@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock } from 'lucide-react';
+import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
 
@@ -116,6 +116,11 @@ export default function AdminClients() {
               {(client.favorite_zones || []).slice(0, 3).map(z => (
                 <span key={z} className="text-[10px] bg-latitud-orange/10 text-latitud-orange px-2 py-0.5 rounded-full flex items-center gap-0.5"><MapPin size={8} /> {z}</span>
               ))}
+            </div>
+            <div className="flex items-center gap-2 flex-wrap mt-2">
+              {(client.liked_count || 0) >= 3 && <span className="text-[10px] bg-[#C9A45C]/15 text-[#C9A45C] px-2 py-0.5 rounded-full font-semibold">Selección activa</span>}
+              {(client.visit_requests_count || 0) > 0 && <span className="text-[10px] bg-green-50 text-green-600 px-2 py-0.5 rounded-full font-semibold">Listo para visita</span>}
+              {client.phone_verified && <span className="text-[10px] bg-blue-50 text-blue-500 px-2 py-0.5 rounded-full font-semibold flex items-center gap-0.5"><CheckCircle size={8} /> WhatsApp verificado</span>}
             </div>
           </Link>
         );})}

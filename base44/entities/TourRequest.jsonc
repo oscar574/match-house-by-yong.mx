@@ -1,0 +1,93 @@
+{
+  "name": "TourRequest",
+  "type": "object",
+  "properties": {
+    "client_id": {
+      "type": "string"
+    },
+    "client_name": {
+      "type": "string"
+    },
+    "client_whatsapp": {
+      "type": "string"
+    },
+    "client_email": {
+      "type": "string"
+    },
+    "advisor_name": {
+      "type": "string"
+    },
+    "property_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "favorite_property_ids_snapshot": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "property_titles": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "zones_summary": {
+      "type": "string"
+    },
+    "price_range_summary": {
+      "type": "string"
+    },
+    "property_count": {
+      "type": "number",
+      "default": 0
+    },
+    "requested_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "requested_time": {
+      "type": "string"
+    },
+    "preferred_day": {
+      "type": "string"
+    },
+    "notes": {
+      "type": "string"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "solicitada",
+        "en revisi\u00f3n",
+        "Confirmada",
+        "reprogramada",
+        "Completada",
+        "Cancelada",
+        "no asisti\u00f3"
+      ],
+      "default": "solicitada"
+    },
+    "whatsapp_message_status": {
+      "type": "string"
+    },
+    "whatsapp_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "buyer_intent_score": {
+      "type": "number",
+      "default": 0
+    },
+    "source": {
+      "type": "string",
+      "default": "favorites_tour_request"
+    }
+  },
+  "required": [
+    "client_id"
+  ]
+}
