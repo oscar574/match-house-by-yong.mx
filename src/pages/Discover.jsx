@@ -109,16 +109,16 @@ export default function Discover() {
     const countryClub = pool.filter(p => (p.zone || '').includes('Country Club') || (p.lifestyle_tags || []).includes('Country Club')).slice(0, 20);
 
     return [
-      { title: 'Recomendadas para ti', subtitle: 'Basado en tu perfil', properties: recommended },
-      { title: 'Nuevos matches', subtitle: 'Últimas incorporadas', properties: newMatches },
+      { title: 'Curadas para ti', subtitle: 'Curated for you', properties: recommended },
+      { title: 'Nuevos matches luxury', subtitle: 'New luxury matches', properties: newMatches },
+      { title: 'Dentro de tu presupuesto', subtitle: 'Within your budget', properties: inBudget },
+      { title: 'Estilo Country Club', subtitle: 'Country Club lifestyle', properties: countryClub },
+      { title: 'Residencias privadas', subtitle: 'Private residences', properties: luxury },
+      { title: 'Casas con alberca', subtitle: 'Pool homes', properties: withPool },
+      { title: 'Selección de inversión', subtitle: 'Investment picks', properties: investments },
       { title: 'Similares a tus favoritas', subtitle: 'En tu radar', properties: similarToFavs },
-      { title: 'Dentro de tu presupuesto', subtitle: 'A tu alcance', properties: inBudget },
-      { title: 'Casas de lujo', subtitle: 'Las más exclusivas', properties: luxury },
       { title: 'Casas familiares', subtitle: '3+ recámaras', properties: familyHomes },
-      { title: 'Casas con alberca', subtitle: 'Disfruta el sol', properties: withPool },
-      { title: 'Oportunidades de inversión', subtitle: 'Potencial de renta', properties: investments },
       { title: 'Mérida Norte', subtitle: 'Mejor zona de la ciudad', properties: meridaNorte },
-      { title: 'Estilo Country Club', subtitle: 'Vida de club', properties: countryClub },
     ].filter(c => c.properties.length > 0);
   }, [properties, client]);
 
@@ -233,7 +233,7 @@ export default function Discover() {
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-0.5">
               <Sparkles size={16} className="text-latitud-orange" />
-              <h2 className="font-heading text-xl text-white">Tu mejor opción hoy</h2>
+              <h2 className="font-heading text-xl text-white">Curado para ti</h2>
             </div>
             <p className="text-white/40 text-xs ml-6">Desliza para ver más · Toca el corazón para guardar</p>
           </div>
@@ -271,7 +271,7 @@ export default function Discover() {
                 onClick={handleLike}
                 className="w-16 h-16 rounded-full bg-latitud-orange flex items-center justify-center shadow-lg accent-glow"
               >
-                <Heart size={28} className="text-white" fill="white" />
+                <Heart size={28} className="text-latitud-black" fill="#050505" />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}

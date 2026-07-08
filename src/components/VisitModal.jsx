@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Calendar, CheckCircle, Clock } from 'lucide-react';
+import { X, Calendar, CheckCircle, Clock, Pencil, MessageCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
+import { brandConfig } from '@/lib/brandConfig';
 
 const TIMES = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
 
@@ -12,7 +13,6 @@ const todayISO = () => {
   return d.toISOString().split('T')[0];
 };
 
-// Convert ISO date + time to a readable day label for AdminVisits compat
 const dayLabel = (iso) => {
   if (!iso) return '';
   const d = new Date(iso + 'T00:00:00');
@@ -20,6 +20,7 @@ const dayLabel = (iso) => {
 };
 
 export default function VisitModal({ open, onClose, property, clientId, clientName, onSubmit }) {
+  const [client, setClient] = useState(null);
   const [name, setName] = useState(clientName || '');
   const [phone, setPhone] = useState('');
   const [email, setEmail] = useState('');
@@ -28,8 +29,31 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
   const [comment, setComment] = useState('');
   const [saving, setSaving] = useState(false);
   const [done, setDone] = useState(false);
+  const [editContact, setEditContact] = useState(false);
+  const [loadingClient, setLoadingClient] = useState(false);
+
+  const demoMode = brandConfig.demo_whatsapp_otp_enabled;
+
+  useEffect(() => {
+    if (open && clientId) {
+      setLoadingClient(true);
+      base44.entities.Client.get(clientId)
+        .then(c => {
+          setClient(c);
+          setName(c.name || clientName || '');
+          setPhone(c.whatsapp || '');
+          setEmail(c.email || '');
+        })
+        .catch(() => { setName(clientName || ''); })
+        .finally(() => setLoadingClient(false));
+    }
+  }, [open, clientId]);
 
   if (!open || !property) return null;
+
+  const hasStoredContact = client?.name && client?.whatsapp;
+  const isVerified = client?.phone_verified || demoMode;
+  const showContactForm = !hasStoredContact || editContact;
 
   const handleSubmit = async () => {
     setSaving(true);
@@ -49,7 +73,10 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
       status: 'solicitada'
     });
 
-    // Update lead score
+    if (clientId && (name !== client?.name || phone !== client?.whatsapp || email !== client?.email)) {
+      try { await base44.entities.Client.update(clientId, { name, whatsapp: phone, email }); } catch (e) { /* ignore */ }
+    }
+
     if (clientId) {
       try {
         const c = await base44.entities.Client.get(clientId);
@@ -85,10 +112,13 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
     setDone(true);
     setTimeout(() => {
       setDone(false);
-      setDate(''); setTime(''); setComment(''); setPhone(''); setEmail('');
+      setDate(''); setTime(''); setComment(''); setEditContact(false);
       onSubmit();
-    }, 2500);
+    }, 2800);
   };
+
+  const contactValid = name && phone && (!email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email));
+  const canSubmit = date && time && (showContactForm ? contactValid : true) && !saving;
 
   return (
     <AnimatePresence>
@@ -96,7 +126,7 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
-        className="fixed inset-0 bg-black/60 backdrop-blur-sm z-50 flex items-end"
+        className="fixed inset-0 bg-black/70 backdrop-blur-sm z-50 flex items-end"
         onClick={onClose}
       >
         <motion.div
@@ -109,13 +139,17 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
         >
           {done ? (
             <div className="text-center py-10">
-              <div className="w-16 h-16 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle size={32} className="text-green-500" />
+              <div className="w-16 h-16 rounded-full bg-[#E6D3A3]/30 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle size={32} className="text-[#C9A45C]" />
               </div>
-              <h3 className="font-heading text-xl text-latitud-black mb-2">¡Solicitud enviada!</h3>
+              <h3 className="font-heading text-xl text-latitud-black mb-2">Listo.</h3>
               <p className="text-sm text-latitud-gray max-w-xs mx-auto">
-                Recibimos tu solicitud de visita. Un asesor de MatchHouse te confirmará el horario disponible a la brevedad.
+                Recibimos tu solicitud de visita. Un asesor te confirmará por WhatsApp.
               </p>
+            </div>
+          ) : loadingClient ? (
+            <div className="flex items-center justify-center py-16">
+              <div className="w-7 h-7 border-2 border-latitud-orange/30 border-t-latitud-orange rounded-full animate-spin" />
             </div>
           ) : (
             <>
@@ -126,41 +160,60 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
               <p className="text-sm text-latitud-gray mb-5">{property.title}</p>
 
               <div className="space-y-4">
-                <div>
-                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Nombre completo</label>
-                  <input
-                    type="text"
-                    value={name}
-                    onChange={e => setName(e.target.value)}
-                    placeholder="Tu nombre"
-                    className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Teléfono</label>
-                    <input
-                      type="tel"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                      placeholder="WhatsApp"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
-                    />
+                {/* Frictionless: show stored contact summary instead of re-asking */}
+                {!showContactForm && (
+                  <div className="rounded-xl border border-[#C9A45C]/30 bg-[#FFFDF8] p-3.5 flex items-center gap-3">
+                    <div className="w-9 h-9 rounded-full bg-[#E6D3A3]/30 flex items-center justify-center shrink-0">
+                      <MessageCircle size={16} className="text-[#C9A45C]" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <p className="text-xs text-latitud-gray">Tu asesor usará este WhatsApp para confirmar la visita</p>
+                      <p className="text-sm font-semibold text-latitud-black truncate">{phone}</p>
+                    </div>
+                    <button onClick={() => setEditContact(true)} className="text-[10px] text-[#C9A45C] font-semibold flex items-center gap-1 shrink-0">
+                      <Pencil size={11} /> Editar
+                    </button>
                   </div>
-                  <div>
-                    <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Correo</label>
-                    <input
-                      type="email"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                      placeholder="Tu correo"
-                      className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
-                    />
-                    {email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && (
-                      <p className="text-[10px] text-red-500 mt-1">Ingresa un correo válido</p>
-                    )}
-                  </div>
-                </div>
+                )}
+
+                {showContactForm && (
+                  <>
+                    <div>
+                      <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Nombre completo</label>
+                      <input
+                        type="text"
+                        value={name}
+                        onChange={e => setName(e.target.value)}
+                        placeholder="Tu nombre"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">WhatsApp</label>
+                      <input
+                        type="tel"
+                        value={phone}
+                        onChange={e => setPhone(e.target.value)}
+                        placeholder="+52 999 123 4567"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
+                      />
+                    </div>
+                    <div>
+                      <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Correo <span className="text-latitud-gray/50">(opcional)</span></label>
+                      <input
+                        type="email"
+                        value={email}
+                        onChange={e => setEmail(e.target.value)}
+                        placeholder="Tu correo"
+                        className="w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors"
+                      />
+                      {email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email) && (
+                        <p className="text-[10px] text-red-500 mt-1">Ingresa un correo válido</p>
+                      )}
+                    </div>
+                    <p className="text-[10px] text-latitud-gray/70">No spam. Solo seguimiento sobre tus matches y visitas.</p>
+                  </>
+                )}
 
                 <div>
                   <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Fecha de la visita</label>
@@ -181,7 +234,7 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
                         key={t}
                         onClick={() => setTime(t)}
                         className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                          time === t ? 'border-latitud-orange bg-[#EAF2FF] text-latitud-black' : 'border-gray-100 text-latitud-gray'
+                          time === t ? 'border-latitud-orange bg-[#E6D3A3]/25 text-latitud-black' : 'border-gray-100 text-latitud-gray'
                         }`}
                       >
                         {t}
@@ -204,11 +257,11 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
 
               <button
                 onClick={handleSubmit}
-                disabled={!name || !phone || !date || !time || saving || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)}
-                className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 mt-6 active:scale-[0.99] transition-transform accent-glow"
+                disabled={!canSubmit}
+                className="w-full bg-latitud-orange text-latitud-black font-semibold py-4 rounded-xl disabled:opacity-40 flex items-center justify-center gap-2 mt-6 active:scale-[0.99] transition-transform accent-glow"
               >
                 {saving ? (
-                  <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                  <div className="w-5 h-5 border-2 border-latitud-black/30 border-t-latitud-black rounded-full animate-spin" />
                 ) : (
                   <>
                     <Calendar size={18} />

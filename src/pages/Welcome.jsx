@@ -67,7 +67,7 @@ export default function Welcome() {
           <Link to="/onboarding">
             <motion.button
               whileTap={{ scale: 0.97 }}
-              className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl text-lg mb-3 active:bg-[#0B2D5C] transition-colors flex items-center justify-center gap-2 accent-glow"
+              className="w-full bg-latitud-orange text-latitud-black font-semibold py-4 rounded-xl text-lg mb-3 active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow"
             >
               Start my match
               <ArrowRight size={20} />

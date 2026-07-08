@@ -16,7 +16,7 @@
     },
     "lead_source": {
       "type": "string",
-      "default": "Latitud Match"
+      "default": "MatchHouse"
     },
     "assigned_advisor": {
       "type": "string"
@@ -167,6 +167,25 @@
     "onboarding_completed": {
       "type": "boolean",
       "default": false
+    },
+    "phone_verified": {
+      "type": "boolean",
+      "default": false
+    },
+    "whatsapp_otp_code": {
+      "type": "string"
+    },
+    "whatsapp_otp_expires_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "whatsapp_otp_attempts": {
+      "type": "number",
+      "default": 0
+    },
+    "whatsapp_verified_at": {
+      "type": "string",
+      "format": "date-time"
     },
     "session_token": {
       "type": "string"

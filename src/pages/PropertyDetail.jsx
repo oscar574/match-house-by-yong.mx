@@ -212,14 +212,14 @@ export default function PropertyDetail() {
               <Share2 size={18} className="text-white" />
             </button>
             <button onClick={toggleFavorite} className="w-10 h-10 rounded-full bg-black/30 backdrop-blur-sm flex items-center justify-center">
-              <Heart size={18} className="text-white" fill={isFavorite ? '#0057FF' : 'none'} stroke={isFavorite ? '#0057FF' : 'white'} />
+              <Heart size={18} className="text-white" fill={isFavorite ? '#C9A45C' : 'none'} stroke={isFavorite ? '#C9A45C' : 'white'} />
             </button>
           </div>
         </div>
 
         {/* Operation badge */}
         <div className="absolute top-24 left-4">
-          <span className="bg-latitud-orange text-white text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
+          <span className="bg-latitud-orange text-latitud-black text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
             {property.operation_type}
           </span>
         </div>
