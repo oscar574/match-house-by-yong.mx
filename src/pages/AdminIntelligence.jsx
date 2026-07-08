@@ -102,8 +102,8 @@ export default function AdminIntelligence() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">Inteligencia de Preferencias</h1>
-      <p className="text-sm text-latitud-gray mb-6">Análisis del comportamiento de clientes en Latitud Match</p>
+      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Intelligence</h1>
+      <p className="text-sm text-latitud-gray mb-6">Análisis del comportamiento de clientes</p>
 
       {/* Summary stats */}
       <div className="grid grid-cols-3 gap-3 mb-6">

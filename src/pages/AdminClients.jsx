@@ -33,7 +33,7 @@ export default function AdminClients() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">Clientes</h1>
+      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Clients</h1>
       <p className="text-sm text-latitud-gray mb-5">{clients.length} clientes registrados</p>
 
       {/* Search */}

@@ -1,4 +1,5 @@
 import React from 'react';
+import { brandConfig } from '@/lib/brandConfig';
 
 export default function LatitudLogo({ variant = 'dark', size = 'md' }) {
   const sizeClasses = {
@@ -9,21 +10,30 @@ export default function LatitudLogo({ variant = 'dark', size = 'md' }) {
   };
 
   const titleColor = variant === 'white' ? 'text-white' : 'text-latitud-black';
-  const subColor = variant === 'white' ? 'text-white/70' : 'text-latitud-gray';
+  const subColor = variant === 'white' ? 'text-white/60' : 'text-latitud-gray';
+  const markBg = variant === 'white' ? '#FFFFFF' : '#061A40';
+  const markStroke = variant === 'white' ? '#061A40' : '#FFFFFF';
+  const markAccent = '#0057FF';
 
   return (
     <div className="flex items-center gap-2 select-none">
       <svg className={sizeClasses[size]} viewBox="0 0 40 40" fill="none">
-        <path d="M20 4L8 16V32L20 36L32 32V16L20 4Z" fill="#FF7A00"/>
-        <path d="M20 8L12 16V28L20 32L28 28V16L20 8Z" fill={variant === 'white' ? '#FFFFFF' : '#0A0A0A'}/>
-        <path d="M20 12L16 16V24L20 28L24 24V16L20 12Z" fill="#FF7A00"/>
+        <rect width="40" height="40" rx="10" fill={markBg} />
+        <path
+          d="M9 29V13L20 21L31 13V29"
+          stroke={markStroke}
+          strokeWidth="3.2"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+        />
+        <path d="M20 21V29" stroke={markAccent} strokeWidth="3.2" strokeLinecap="round" />
       </svg>
       <div className="flex flex-col leading-none">
         <span className={`font-extrabold text-sm tracking-tight ${titleColor}`}>
-          MatchHouse
+          {brandConfig.brand_name}
         </span>
         <span className={`text-[9px] tracking-[0.18em] ${subColor}`}>
-          by YONG.MX
+          {brandConfig.brand_subtitle}
         </span>
       </div>
     </div>

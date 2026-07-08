@@ -164,7 +164,7 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
                         key={t}
                         onClick={() => setTime(t)}
                         className={`px-3 py-2 rounded-lg text-xs font-medium border transition-all ${
-                          time === t ? 'border-latitud-orange bg-orange-50 text-latitud-black' : 'border-gray-100 text-latitud-gray'
+                          time === t ? 'border-latitud-orange bg-[#EAF2FF] text-latitud-black' : 'border-gray-100 text-latitud-gray'
                         }`}
                       >
                         {t}

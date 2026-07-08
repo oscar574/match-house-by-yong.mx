@@ -89,15 +89,15 @@ export default function AdminDashboard() {
     { label: 'Leads nuevos', value: data.newClients, icon: Users, color: 'bg-latitud-orange/10 text-latitud-orange' },
     { label: 'Onboarding completo', value: data.onboarded, icon: TrendingUp, color: 'bg-green-50 text-green-600' },
     { label: 'Con likes', value: data.withLikes, icon: Heart, color: 'bg-red-50 text-red-500' },
-    { label: 'Visitas pendientes', value: data.pendingVisits, icon: Calendar, color: 'bg-orange-50 text-latitud-orange' },
+    { label: 'Visitas pendientes', value: data.pendingVisits, icon: Calendar, color: 'bg-[#EAF2FF] text-latitud-orange' },
     { label: 'Alta intención', value: data.highIntent, icon: AlertTriangle, color: 'bg-yellow-50 text-yellow-600' },
     { label: 'Propiedades activas', value: data.totalProperties, icon: Building2, color: 'bg-gray-100 text-latitud-gray' },
   ];
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">Dashboard</h1>
-      <p className="text-sm text-latitud-gray mb-6">Centro de control — Latitud Match</p>
+      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Admin</h1>
+      <p className="text-sm text-latitud-gray mb-6">Centro de control</p>
 
       {/* Stats grid */}
       <div className="grid grid-cols-2 gap-3 mb-6">

@@ -117,7 +117,7 @@ export default function Onboarding() {
       bedrooms_wanted: answers.bedrooms_wanted || '',
       onboarding_completed: true,
       commercial_stage: 'Onboarding completado',
-      lead_source: 'Latitud Match',
+      lead_source: 'MatchHouse',
       assigned_advisor: answers.city === 'Ciudad de México' ? 'Ana Martínez' : 'Carlos Ramírez'
     };
 

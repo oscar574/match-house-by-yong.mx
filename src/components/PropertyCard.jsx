@@ -69,7 +69,7 @@ export default function PropertyCard({ property, matchPercentage, matchReason })
               <circle cx="28" cy="28" r="24" fill="none" stroke="rgba(255,255,255,0.15)" strokeWidth="3" />
               <circle
                 cx="28" cy="28" r="24" fill="none"
-                stroke="#FF7A00" strokeWidth="3"
+                stroke="#0057FF" strokeWidth="3"
                 strokeLinecap="round"
                 strokeDasharray={`${2 * Math.PI * 24}`}
                 strokeDashoffset={`${2 * Math.PI * 24 * (1 - matchPercentage / 100)}`}

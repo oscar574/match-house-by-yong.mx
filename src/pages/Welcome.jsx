@@ -51,18 +51,18 @@ export default function Welcome() {
           />
           
           <h1 className="font-heading text-3xl md:text-4xl text-white leading-tight mb-4">
-            Encuentra una propiedad que se sienta como tuya.
+            Encuentra una propiedad que realmente vaya contigo.
           </h1>
           <p className="text-white/60 text-base leading-relaxed mb-10 max-w-md">
-            Dinos qué buscas y te mostraremos propiedades que realmente encajen contigo — no inventarios genéricos, sino opciones compatibles con tu estilo de vida.
+            Descubre casas compatibles con tu estilo de vida, presupuesto y momento de compra, sin perderte entre cientos de listados.
           </p>
 
           <Link to="/onboarding">
             <motion.button
               whileTap={{ scale: 0.97 }}
-              className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl text-lg mb-4 active:bg-orange-600 transition-colors flex items-center justify-center gap-2 accent-glow"
+              className="w-full bg-latitud-orange text-white font-semibold py-4 rounded-xl text-lg mb-4 active:bg-[#0B2D5C] transition-colors flex items-center justify-center gap-2 accent-glow"
             >
-              Encontrar mi propiedad
+              Empezar mi match
               <ArrowRight size={20} />
             </motion.button>
           </Link>
@@ -70,12 +70,12 @@ export default function Welcome() {
           <Link to="/onboarding?has_advisor=true">
             <button className="w-full border border-white/20 text-white/80 font-medium py-4 rounded-xl text-base hover:bg-white/5 transition-colors flex items-center justify-center gap-2">
               <UserCheck size={18} />
-              Ya tengo un asesor
+              Ya tengo asesor
             </button>
           </Link>
 
           <p className="text-white/30 text-xs text-center mt-8">
-            by YONG.MX
+            Powered by YONG.MX
           </p>
         </motion.div>
       </div>

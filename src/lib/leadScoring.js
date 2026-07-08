@@ -1,4 +1,4 @@
-// Lead scoring engine for Latitud Match
+// Lead scoring engine for MatchHouse
 // Tracks buyer intention based on interactions
 
 export const LEAD_ACTIONS = {

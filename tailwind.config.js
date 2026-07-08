@@ -13,10 +13,10 @@ module.exports = {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			latitud: {
-  				black: '#0A0A0A',
-  				orange: '#FF7A00',
-  				gray: '#4A4A4A',
-  				light: '#F4F4F4',
+  				black: '#061A40',
+  				orange: '#0057FF',
+  				gray: '#6B7280',
+  				light: '#F7F9FC',
   				white: '#FFFFFF'
   			},
   			card: {
@@ -69,9 +69,9 @@ module.exports = {
   			}
   		},
   		fontFamily: {
-  			heading: ['Playfair Display', 'serif'],
+  			heading: ['Sora', 'sans-serif'],
   			body: ['Inter', 'sans-serif'],
-  			display: ['Playfair Display', 'serif'],
+  			display: ['Sora', 'sans-serif'],
   			mono: ['var(--font-mono)']
   		},
   		keyframes: {

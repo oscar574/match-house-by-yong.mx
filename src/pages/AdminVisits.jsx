@@ -49,7 +49,7 @@ export default function AdminVisits() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">Citas</h1>
+      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Visits</h1>
       <p className="text-sm text-latitud-gray mb-5">{visits.length} citas en total</p>
 
       <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">

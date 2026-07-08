@@ -38,7 +38,7 @@ export default function DislikeModal({ open, onClose, onSubmit }) {
                 key={r}
                 onClick={() => setSelected(r)}
                 className={`w-full text-left px-4 py-3 rounded-xl border-2 text-sm font-medium transition-all ${
-                  selected === r ? 'border-latitud-orange bg-orange-50 text-latitud-black' : 'border-gray-100 text-latitud-gray'
+                  selected === r ? 'border-latitud-orange bg-[#EAF2FF] text-latitud-black' : 'border-gray-100 text-latitud-gray'
                 }`}
               >
                 {r}

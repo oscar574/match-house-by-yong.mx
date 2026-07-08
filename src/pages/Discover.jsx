@@ -13,7 +13,7 @@ import { calculateMatch } from '@/lib/matchEngine';
 import { addLeadScore } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 
-// Only show homes that generate commission for Latitud
+// Only show homes that generate commission
 function isCommissionVisible(p) {
   const commissionOk = p.commission_status === 'Confirmada' || p.shared_commission === true || p.collaboration_enabled === true;
   const statusOk = p.status === 'Disponible';
@@ -97,23 +97,23 @@ export default function Discover() {
     const favZones = client?.favorite_zones || [];
 
     const recommended = pool.slice(0, 20);
-    const newHomes = [...pool].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 20);
+    const newMatches = [...pool].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 20);
     const inBudget = budgetMax ? pool.filter(p => p.price <= budgetMax).slice(0, 20) : pool.slice(0, 20);
-    const inFavZones = favZones.length > 0 ? pool.filter(p => favZones.includes(p.zone)).slice(0, 20) : pool.slice(0, 20);
-    const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
+    const similarToFavs = favZones.length > 0 ? pool.filter(p => favZones.includes(p.zone)).slice(0, 20) : pool.slice(0, 20);
     const luxury = [...pool].sort((a, b) => b.price - a.price).slice(0, 20);
-    const meridaNorte = pool.filter(p => p.city === 'Mérida' && (p.zone?.toLowerCase().includes('norte') || p.zone?.toLowerCase().includes('merida'))).slice(0, 20);
-    const countryClub = pool.filter(p => p.zone?.includes('Country Club') || p.zone?.includes('Yucatán')).slice(0, 20);
+    const familyHomes = pool.filter(p => (p.bedrooms || 0) >= 3).slice(0, 20);
+    const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
+    const investments = pool.filter(p => p.rental_potential || (p.investment_profile && p.investment_profile !== 'N/A')).slice(0, 20);
 
     return [
       { title: 'Recomendadas para ti', subtitle: 'Basado en tu perfil', properties: recommended },
-      { title: 'Casas nuevas', subtitle: 'Últimas incorporadas', properties: newHomes },
+      { title: 'Nuevos matches', subtitle: 'Últimas incorporadas', properties: newMatches },
+      { title: 'Similares a tus favoritas', subtitle: 'En tu radar', properties: similarToFavs },
       { title: 'Dentro de tu presupuesto', subtitle: 'A tu alcance', properties: inBudget },
-      { title: 'En tus zonas favoritas', subtitle: 'Donde quieres vivir', properties: inFavZones },
-      { title: 'Casas con alberca', subtitle: 'Disfruta el sol', properties: withPool },
       { title: 'Casas de lujo', subtitle: 'Las más exclusivas', properties: luxury },
-      { title: 'Casas en Mérida Norte', subtitle: 'Mejor zona de la ciudad', properties: meridaNorte },
-      { title: 'Yucatán Country Club', subtitle: 'Vida de club', properties: countryClub },
+      { title: 'Casas familiares', subtitle: '3+ recámaras', properties: familyHomes },
+      { title: 'Casas con alberca', subtitle: 'Disfruta el sol', properties: withPool },
+      { title: 'Oportunidades de inversión', subtitle: 'Potencial de renta', properties: investments },
     ].filter(c => c.properties.length > 0);
   }, [properties, client]);
 

@@ -32,7 +32,7 @@ export default function AdminTasks() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">Tareas</h1>
+      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Tasks</h1>
       <p className="text-sm text-latitud-gray mb-5">{tasks.filter(t => t.status === 'Pendiente').length} pendientes</p>
 
       <div className="flex gap-2 mb-5 overflow-x-auto no-scrollbar">

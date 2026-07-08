@@ -163,7 +163,7 @@ export default function AdminProperties() {
   return (
     <div className="px-4 py-6">
       <div className="flex items-center justify-between mb-1">
-        <h1 className="font-heading text-2xl text-latitud-black">Propiedades</h1>
+        <h1 className="font-heading text-2xl text-latitud-black">MatchHouse Properties</h1>
         <button
           onClick={handleSync}
           disabled={syncing}
