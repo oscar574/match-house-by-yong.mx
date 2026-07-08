@@ -1,14 +1,28 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, Calendar, Info, MessageCircle } from 'lucide-react';
+import { X, Heart, Calendar, Info, MessageCircle, Sparkles } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PropertyCard from '@/components/PropertyCard';
+import PropertyCarousel from '@/components/PropertyCarousel';
 import DislikeModal from '@/components/DislikeModal';
 import VisitModal from '@/components/VisitModal';
 import InsightModal from '@/components/InsightModal';
 import LatitudLogo from '@/components/LatitudLogo';
-import { calculateMatch, formatPrice } from '@/lib/matchEngine';
+import { calculateMatch } from '@/lib/matchEngine';
+import { addLeadScore } from '@/lib/leadScoring';
+
+// Only show homes that generate commission for Latitud
+function isCommissionVisible(p) {
+  const commissionOk = p.commission_status === 'Confirmada' || p.shared_commission === true || p.collaboration_enabled === true;
+  const statusOk = p.status === 'Disponible';
+  const visibleOk = (p.is_visible_in_app !== false) && (p.visible_to_clients !== false);
+  const notDuplicate = p.is_duplicate !== true || !p.duplicate_master_property_id;
+  const hasData = p.price > 0 && p.construction_area > 0;
+  const hasPhoto = (p.cover_photo_url || (p.photos && p.photos.length > 0) || (p.photo_urls && p.photo_urls.length > 0)) !== false;
+  const isCasa = p.property_type === 'Casa';
+  return commissionOk && statusOk && visibleOk && notDuplicate && hasData && hasPhoto && isCasa;
+}
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -21,6 +35,7 @@ export default function Discover() {
   const [showInsight, setShowInsight] = useState(false);
   const [reactionCount, setReactionCount] = useState(0);
   const [direction, setDirection] = useState(0);
+  const [leadScore, setLeadScore] = useState(0);
 
   useEffect(() => {
     loadData();
@@ -31,12 +46,16 @@ export default function Discover() {
     let clientData = null;
 
     if (clientId) {
-      clientData = await base44.entities.Client.get(clientId);
-      setClient(clientData);
+      try {
+        clientData = await base44.entities.Client.get(clientId);
+        setClient(clientData);
+        setLeadScore(clientData.lead_score || 0);
+      } catch (e) { /* ignore */ }
     }
 
-    const allProps = await base44.entities.Property.filter({ status: 'Disponible', visible_to_clients: true });
-    
+    // Load max 20 properties initially (progressive loading)
+    const allProps = await base44.entities.Property.list('-created_date', 50);
+
     // Get already reacted properties
     let reactedIds = [];
     if (clientId) {
@@ -44,21 +63,53 @@ export default function Discover() {
       reactedIds = reactions.map(r => r.property_id);
     }
 
-    // Filter out reacted and sort by match
-    let available = allProps.filter(p => !reactedIds.includes(p.id));
-    
+    // Filter: only commission-visible, available, non-duplicate homes
+    let available = allProps.filter(isCommissionVisible);
+    available = available.filter(p => !reactedIds.includes(p.id));
+
+    // Enrich with match score
     if (clientData) {
       available = available.map(p => {
         const match = calculateMatch(p, clientData);
         return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
-      }).sort((a, b) => b._matchPercentage - a._matchPercentage);
+      });
     }
+
+    // Sort by match if available, else by most recent
+    available.sort((a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0));
 
     setProperties(available);
     setLoading(false);
   };
 
   const currentProperty = properties[currentIndex];
+
+  // Build carousels from all loaded properties (max 20 each)
+  const carousels = useMemo(() => {
+    const pool = properties;
+    const budgetMax = client?.budget_max_estimated || null;
+    const favZones = client?.favorite_zones || [];
+
+    const recommended = pool.slice(0, 20);
+    const newHomes = [...pool].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 20);
+    const inBudget = budgetMax ? pool.filter(p => p.price <= budgetMax).slice(0, 20) : pool.slice(0, 20);
+    const inFavZones = favZones.length > 0 ? pool.filter(p => favZones.includes(p.zone)).slice(0, 20) : pool.slice(0, 20);
+    const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
+    const luxury = [...pool].sort((a, b) => b.price - a.price).slice(0, 20);
+    const meridaNorte = pool.filter(p => p.city === 'Mérida' && (p.zone?.toLowerCase().includes('norte') || p.zone?.toLowerCase().includes('merida'))).slice(0, 20);
+    const countryClub = pool.filter(p => p.zone?.includes('Country Club') || p.zone?.includes('Yucatán')).slice(0, 20);
+
+    return [
+      { title: 'Recomendadas para ti', subtitle: 'Basado en tu perfil', properties: recommended },
+      { title: 'Casas nuevas', subtitle: 'Últimas incorporadas', properties: newHomes },
+      { title: 'Dentro de tu presupuesto', subtitle: 'A tu alcance', properties: inBudget },
+      { title: 'En tus zonas favoritas', subtitle: 'Donde quieres vivir', properties: inFavZones },
+      { title: 'Casas con alberca', subtitle: 'Disfruta el sol', properties: withPool },
+      { title: 'Casas de lujo', subtitle: 'Las más exclusivas', properties: luxury },
+      { title: 'Casas en Mérida Norte', subtitle: 'Mejor zona de la ciudad', properties: meridaNorte },
+      { title: 'Yucatán Country Club', subtitle: 'Vida de club', properties: countryClub },
+    ].filter(c => c.properties.length > 0);
+  }, [properties, client]);
 
   const handleReaction = async (type, extra = {}) => {
     if (!currentProperty) return;
@@ -77,20 +128,49 @@ export default function Discover() {
       ...extra
     });
 
-    // Update client counts
+    // Update client counts + lead score
     const updates = { last_activity_date: new Date().toISOString() };
-    if (type === 'like') updates.liked_count = (client?.liked_count || 0) + 1;
-    if (type === 'dislike') updates.disliked_count = (client?.disliked_count || 0) + 1;
-    if (type === 'visit_request') updates.visit_requests_count = (client?.visit_requests_count || 0) + 1;
+    let action = null;
+    if (type === 'like') {
+      updates.liked_count = (client?.liked_count || 0) + 1;
+      action = 'SAVE_FAVORITE';
+    }
+    if (type === 'dislike') {
+      updates.disliked_count = (client?.disliked_count || 0) + 1;
+    }
+    if (type === 'visit_request') {
+      updates.visit_requests_count = (client?.visit_requests_count || 0) + 1;
+      action = 'REQUEST_VISIT';
+    }
+
+    // Lead scoring
+    const hasVisit = (client?.visit_requests_count || 0) > 0 || type === 'visit_request';
+    const { score: newScore, status: newStatus } = addLeadScore(
+      leadScore,
+      action,
+      hasVisit
+    );
+    updates.lead_score = newScore;
+    updates.lead_status = newStatus;
+    setLeadScore(newScore);
+
+    // Maintenance: keep arrays short
+    if (type === 'like' && client?.favorite_property_ids) {
+      if (!client.favorite_property_ids.includes(currentProperty.id)) {
+        updates.favorite_property_ids = [...client.favorite_property_ids, currentProperty.id].slice(-50);
+      }
+    }
+    if (type === 'dislike' && client?.rejected_property_ids) {
+      if (!client.rejected_property_ids.includes(currentProperty.id)) {
+        updates.rejected_property_ids = [...client.rejected_property_ids, currentProperty.id].slice(-50);
+      }
+    }
+
     await base44.entities.Client.update(clientId, updates);
 
     const newCount = reactionCount + 1;
     setReactionCount(newCount);
-
-    // Show insight every 5 reactions
-    if (newCount % 5 === 0 && newCount > 0) {
-      setShowInsight(true);
-    }
+    if (newCount % 5 === 0 && newCount > 0) setShowInsight(true);
 
     setDirection(type === 'like' || type === 'visit_request' ? 1 : -1);
     setCurrentIndex(i => i + 1);
@@ -109,11 +189,12 @@ export default function Discover() {
   }
 
   const noMore = currentIndex >= properties.length;
+  const hasSwipable = !noMore && currentProperty;
 
   return (
-    <div className="min-h-screen bg-latitud-black flex flex-col">
+    <div className="min-h-screen bg-latitud-black pb-10">
       {/* Header */}
-      <div className="px-4 pt-6 pb-3 flex items-center justify-between">
+      <div className="px-4 pt-6 pb-3 flex items-center justify-between sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <LatitudLogo variant="white" size="sm" />
         <div className="flex items-center gap-3">
           <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors">
@@ -125,109 +206,110 @@ export default function Discover() {
         </div>
       </div>
 
-      {/* Intro text */}
-      {currentIndex === 0 && (
-        <motion.div 
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          className="px-6 pb-4"
-        >
-          <h2 className="font-heading text-xl text-white">Estas propiedades podrían gustarte.</h2>
-          <p className="text-white/40 text-sm">Desliza para descubrir qué opciones se parecen más a lo que buscas.</p>
-        </motion.div>
-      )}
+      {/* Hero swipe deck */}
+      {hasSwipable ? (
+        <div className="px-4 pb-2 relative">
+          <div className="mb-3 flex items-center gap-2">
+            <Sparkles size={16} className="text-latitud-orange" />
+            <h2 className="font-heading text-lg text-white">Tu mejor opción hoy</h2>
+          </div>
+          <div className="relative min-h-[60vh]">
+            <AnimatePresence mode="wait">
+              <motion.div
+                key={currentIndex}
+                initial={{ opacity: 0, x: direction > 0 ? 100 : -100, scale: 0.95 }}
+                animate={{ opacity: 1, x: 0, scale: 1 }}
+                exit={{ opacity: 0, x: direction > 0 ? -100 : 100, scale: 0.95 }}
+                transition={{ duration: 0.35 }}
+                className="h-full min-h-[60vh]"
+              >
+                <PropertyCard
+                  property={currentProperty}
+                  matchPercentage={currentProperty._matchPercentage}
+                  matchReason={currentProperty._matchReason}
+                />
+              </motion.div>
+            </AnimatePresence>
+          </div>
 
-      {/* Card area */}
-      <div className="flex-1 px-4 pb-4 relative min-h-[60vh]">
-        {noMore ? (
-          <div className="flex flex-col items-center justify-center h-full text-center px-8">
-            <div className="w-16 h-16 rounded-full bg-latitud-orange/10 flex items-center justify-center mb-4">
-              <Heart size={28} className="text-latitud-orange" />
+          {/* Action buttons */}
+          <div className="px-4 pb-6 pt-4">
+            <div className="flex items-center justify-center gap-4">
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleDislike}
+                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+              >
+                <X size={24} className="text-white/70" />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleLike}
+                className="w-16 h-16 rounded-full bg-latitud-orange flex items-center justify-center shadow-lg accent-glow"
+              >
+                <Heart size={28} className="text-white" fill="white" />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={handleVisit}
+                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+              >
+                <Calendar size={22} className="text-white/70" />
+              </motion.button>
+              <motion.button
+                whileTap={{ scale: 0.9 }}
+                onClick={() => navigate(`/property/${currentProperty.id}`)}
+                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+              >
+                <Info size={22} className="text-white/70" />
+              </motion.button>
             </div>
-            <h3 className="font-heading text-xl text-white mb-2">Has visto todas las propiedades</h3>
-            <p className="text-white/50 text-sm mb-6">Estamos buscando más opciones para ti. Pronto tendremos nuevas propiedades compatibles.</p>
-            <button 
-              onClick={() => navigate('/favorites')}
-              className="bg-latitud-orange text-white font-semibold px-8 py-3 rounded-xl"
-            >
-              Ver mis favoritas
-            </button>
+            <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-white/30 tracking-wider uppercase">
+              <span className="w-14 text-center">No</span>
+              <span className="w-16 text-center">Me gusta</span>
+              <span className="w-14 text-center">Visitar</span>
+              <span className="w-14 text-center">Detalles</span>
+            </div>
           </div>
-        ) : (
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={currentIndex}
-              initial={{ opacity: 0, x: direction > 0 ? 100 : -100, scale: 0.95 }}
-              animate={{ opacity: 1, x: 0, scale: 1 }}
-              exit={{ opacity: 0, x: direction > 0 ? -100 : 100, scale: 0.95 }}
-              transition={{ duration: 0.35 }}
-              className="h-full min-h-[60vh]"
-            >
-              <PropertyCard 
-                property={currentProperty}
-                matchPercentage={currentProperty._matchPercentage}
-                matchReason={currentProperty._matchReason}
-              />
-            </motion.div>
-          </AnimatePresence>
-        )}
-      </div>
-
-      {/* Action buttons */}
-      {!noMore && (
-        <div className="px-4 pb-8 pt-2">
-          <div className="flex items-center justify-center gap-4">
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleDislike}
-              className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
-            >
-              <X size={24} className="text-white/70" />
-            </motion.button>
-            
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleLike}
-              className="w-16 h-16 rounded-full bg-latitud-orange flex items-center justify-center shadow-lg accent-glow"
-            >
-              <Heart size={28} className="text-white" fill="white" />
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={handleVisit}
-              className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
-            >
-              <Calendar size={22} className="text-white/70" />
-            </motion.button>
-
-            <motion.button
-              whileTap={{ scale: 0.9 }}
-              onClick={() => navigate(`/property/${currentProperty.id}`)}
-              className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
-            >
-              <Info size={22} className="text-white/70" />
-            </motion.button>
+        </div>
+      ) : (
+        <div className="px-6 py-20 text-center">
+          <div className="w-16 h-16 rounded-full bg-latitud-orange/10 flex items-center justify-center mb-4 mx-auto">
+            <Heart size={28} className="text-latitud-orange" />
           </div>
-          <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-white/30 tracking-wider uppercase">
-            <span className="w-14 text-center">No</span>
-            <span className="w-16 text-center">Me gusta</span>
-            <span className="w-14 text-center">Visitar</span>
-            <span className="w-14 text-center">Detalles</span>
-          </div>
+          <h3 className="font-heading text-xl text-white mb-2">Has visto todas las propiedades</h3>
+          <p className="text-white/50 text-sm mb-6">Estamos buscando más opciones para ti.</p>
+          <button
+            onClick={() => navigate('/favorites')}
+            className="bg-latitud-orange text-white font-semibold px-8 py-3 rounded-xl"
+          >
+            Ver mis favoritas
+          </button>
         </div>
       )}
 
+      {/* Netflix-style carousels */}
+      <div className="pt-4">
+        {carousels.map((c, i) => (
+          <PropertyCarousel
+            key={i}
+            title={c.title}
+            subtitle={c.subtitle}
+            properties={c.properties}
+          />
+        ))}
+      </div>
+
       {/* Modals */}
-      <DislikeModal 
-        open={showDislike} 
+      <DislikeModal
+        open={showDislike}
         onClose={() => setShowDislike(false)}
         onSubmit={(reason) => {
           handleReaction('dislike', { dislike_reason: reason });
           setShowDislike(false);
         }}
       />
-      <VisitModal 
+      <VisitModal
         open={showVisit}
         onClose={() => setShowVisit(false)}
         property={currentProperty}

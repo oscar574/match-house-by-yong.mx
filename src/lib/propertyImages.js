@@ -112,4 +112,15 @@ export function getFallbackImage(property) {
   return typePhotos[0] || FALLBACK_ARCHITECTURE;
 }
 
+/**
+ * Get the cover photo for a property.
+ * Priority: cover_photo_url → first photo → fallback by zone/type.
+ */
+export function getCoverPhoto(property) {
+  if (property?.cover_photo_url) return property.cover_photo_url;
+  const photos = property?.photos || property?.photo_urls || [];
+  if (photos.length > 0) return photos[0];
+  return getFallbackImage(property);
+}
+
 export { FALLBACK_ARCHITECTURE };

@@ -11,10 +11,19 @@
     "client_whatsapp": {
       "type": "string"
     },
+    "client_email": {
+      "type": "string"
+    },
     "property_id": {
       "type": "string"
     },
     "property_title": {
+      "type": "string"
+    },
+    "advisor_id": {
+      "type": "string"
+    },
+    "advisor_name": {
       "type": "string"
     },
     "preferred_day": {
@@ -23,21 +32,38 @@
     "preferred_time": {
       "type": "string"
     },
+    "requested_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "requested_time": {
+      "type": "string"
+    },
+    "confirmed_date": {
+      "type": "string",
+      "format": "date"
+    },
+    "confirmed_time": {
+      "type": "string"
+    },
     "comment": {
+      "type": "string"
+    },
+    "notes": {
       "type": "string"
     },
     "status": {
       "type": "string",
       "enum": [
+        "solicitada",
         "Pendiente",
         "Confirmada",
+        "reprogramada",
+        "Cancelada",
         "Completada",
-        "Cancelada"
+        "no asisti\u00f3"
       ],
-      "default": "Pendiente"
-    },
-    "advisor_name": {
-      "type": "string"
+      "default": "solicitada"
     }
   },
   "required": [

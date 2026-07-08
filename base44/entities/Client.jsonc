@@ -24,6 +24,12 @@
     "budget_range": {
       "type": "string"
     },
+    "budget_min_estimated": {
+      "type": "number"
+    },
+    "budget_max_estimated": {
+      "type": "number"
+    },
     "commercial_stage": {
       "type": "string",
       "enum": [
@@ -65,6 +71,27 @@
     "bedrooms_wanted": {
       "type": "string"
     },
+    "preferred_neighborhoods": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "preferred_bedrooms": {
+      "type": "number"
+    },
+    "preferred_bathrooms": {
+      "type": "number"
+    },
+    "preferred_construction_m2": {
+      "type": "number"
+    },
+    "preferred_amenities": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
     "intent_score": {
       "type": "string",
       "enum": [
@@ -73,6 +100,46 @@
         "Explorando"
       ],
       "default": "Explorando"
+    },
+    "lead_score": {
+      "type": "number",
+      "default": 0
+    },
+    "lead_status": {
+      "type": "string",
+      "enum": [
+        "explorando",
+        "interesado",
+        "lead calificado",
+        "alta intenci\u00f3n",
+        "prioridad m\u00e1xima"
+      ],
+      "default": "explorando"
+    },
+    "buyer_intent_score": {
+      "type": "number",
+      "default": 0
+    },
+    "buyer_summary_ai": {
+      "type": "string"
+    },
+    "favorite_property_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "rejected_property_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "high_interest_property_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     },
     "liked_count": {
       "type": "number",
