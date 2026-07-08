@@ -56,6 +56,24 @@ const QUESTIONS = [
     question: '¿Cuántas recámaras necesitas?',
     type: 'single',
     options: ['1', '2', '3', '4 o más', 'No importa']
+  },
+  {
+    id: 'bathrooms_wanted',
+    question: '¿Cuántos baños necesitas?',
+    type: 'single',
+    options: ['1', '2', '3', '4 o más', 'No importa']
+  },
+  {
+    id: 'wants_pool',
+    question: '¿Quieres alberca?',
+    type: 'single',
+    options: ['Sí', 'No', 'Indiferente']
+  },
+  {
+    id: 'purchase_style',
+    question: '¿Cuál es tu estilo de compra?',
+    type: 'single',
+    options: ['Familiar', 'Inversión', 'Lujo', 'Playa', 'Centro', 'Norte']
   }
 ];
 
@@ -102,6 +120,17 @@ export default function Onboarding() {
     else if (lookingFor.includes('departamento')) propertyType = 'Departamento';
     else if (lookingFor.includes('terreno')) propertyType = 'Terreno';
 
+    const budgetMap = {
+      'Menos de $3M': [0, 3000000],
+      '$3M a $5M': [3000000, 5000000],
+      '$5M a $10M': [5000000, 10000000],
+      '$10M a $20M': [10000000, 20000000],
+      'Más de $20M': [20000000, 100000000]
+    };
+    const [budgetMin, budgetMax] = budgetMap[answers.budget_range] || [0, 0];
+    const bathsNum = answers.bathrooms_wanted && answers.bathrooms_wanted !== 'No importa' ? parseInt(answers.bathrooms_wanted) : null;
+    const bedsNum = answers.bedrooms_wanted && answers.bedrooms_wanted !== 'No importa' ? parseInt(answers.bedrooms_wanted) : null;
+
     const clientData = {
       name: contactInfo.name,
       whatsapp: contactInfo.whatsapp,
@@ -115,6 +144,12 @@ export default function Onboarding() {
       estimated_purchase_date: answers.estimated_purchase_date || '',
       payment_method: answers.payment_method || '',
       bedrooms_wanted: answers.bedrooms_wanted || '',
+      preferred_bedrooms: bedsNum,
+      preferred_bathrooms: bathsNum,
+      preferred_amenities: answers.wants_pool === 'Sí' ? ['alberca'] : [],
+      investment_profile: answers.purchase_style || '',
+      budget_min_estimated: budgetMin,
+      budget_max_estimated: budgetMax,
       onboarding_completed: true,
       buyer_intent_score: 10,
       lead_score: 10,

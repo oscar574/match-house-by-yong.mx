@@ -1,6 +1,8 @@
 // Lead scoring engine for MatchHouse
 // Tracks buyer intention based on interactions
 
+import { base44 } from '@/api/base44Client';
+
 export const LEAD_ACTIONS = {
   VIEW_20s: { points: 2, label: 'Ver propiedad >20s' },
   VIEW_ALL_PHOTOS: { points: 4, label: 'Ver todas las fotos' },
@@ -50,4 +52,29 @@ export function buildIntentUpdate(client, action) {
     lead_score: score,
     lead_status: status
   };
+}
+
+// Idempotently create a follow-up Task for a lead (skips if an open task with the
+// same title already exists for the client). Used by the auto-task triggers.
+export async function ensureLeadTask({ clientId, clientName, advisor, title, taskType, priority, propertyId, propertyName, dueInDays = 1 }) {
+  if (!clientId) return null;
+  try {
+    const existing = await base44.entities.Task.filter({ client_id: clientId, title, status: 'Pendiente' });
+    if (existing.length > 0) return existing[0];
+    const due = new Date(Date.now() + dueInDays * 86400000).toISOString().split('T')[0];
+    return await base44.entities.Task.create({
+      title,
+      description: propertyName ? `Propiedad: ${propertyName}` : '',
+      task_type: taskType,
+      client_id: clientId,
+      client_name: clientName || '',
+      property_id: propertyId || '',
+      assigned_to: advisor || '',
+      status: 'Pendiente',
+      priority: priority || 'Media',
+      due_date: due
+    });
+  } catch (e) {
+    return null;
+  }
 }

@@ -4,7 +4,7 @@ import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, C
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
-import { addLeadScore, getLeadStatus } from '@/lib/leadScoring';
+import { addLeadScore, getLeadStatus, ensureLeadTask } from '@/lib/leadScoring';
 import VisitModal from '@/components/VisitModal';
 import PropertyThumb from '@/components/PropertyThumb';
 
@@ -46,6 +46,9 @@ export default function PropertyDetail() {
           const priorViews = await base44.entities.Reaction.filter({ client_id: clientId, property_id: p.id, reaction_type: 'view' });
           if (!cancelled && priorViews.length > 0) {
             addIntent(clientId, 'REOPEN_PROPERTY');
+          }
+          if (!cancelled && priorViews.length >= 3) {
+            ensureLeadTask({ clientId, clientName: c?.name, advisor: c?.assigned_advisor, title: `Cliente volvió a ver "${p.title}" varias veces`, taskType: 'Reactivación', priority: 'Media', propertyId: p.id, propertyName: p.title });
           }
 
           // Register a fresh view reaction
@@ -111,6 +114,12 @@ export default function PropertyDetail() {
         lead_score: score,
         lead_status: getLeadStatus(score, hasVisit)
       });
+      if (current < 35 && score >= 35) {
+        ensureLeadTask({ clientId, clientName: c.name, advisor: c.assigned_advisor, title: `Lead calificado — contactar a ${c.name}`, taskType: 'Seguimiento', priority: 'Alta' });
+      }
+      if (current < 50 && score >= 50) {
+        ensureLeadTask({ clientId, clientName: c.name, advisor: c.assigned_advisor, title: `Cliente alta intención — ${c.name}`, taskType: 'Contacto prioritario', priority: 'Alta' });
+      }
     } catch (e) { /* ignore */ }
   };
 

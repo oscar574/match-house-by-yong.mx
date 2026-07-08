@@ -1,18 +1,26 @@
 import React, { useState, useEffect } from 'react';
-import { Calendar, MapPin, Clock, CheckCircle, XCircle, User, RotateCcw, CheckSquare, ListTodo } from 'lucide-react';
+import { Calendar, Clock, CheckCircle, XCircle, User, RotateCcw, CheckSquare, ListTodo, Mail, Zap } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
 
 export default function AdminVisits() {
   const [visits, setVisits] = useState([]);
+  const [clients, setClients] = useState({});
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('solicitada');
 
   useEffect(() => {
-    base44.entities.VisitRequest.list('-created_date', 50).then(v => {
+    (async () => {
+      const [v, c] = await Promise.all([
+        base44.entities.VisitRequest.list('-created_date', 100),
+        base44.entities.Client.list('-created_date', 100)
+      ]);
+      const map = {};
+      c.forEach(cl => { map[cl.id] = cl; });
+      setClients(map);
       setVisits(v);
       setLoading(false);
-    });
+    })();
   }, []);
 
   const updateStatus = async (id, status) => {
@@ -36,8 +44,12 @@ export default function AdminVisits() {
   };
 
   const filters = ['solicitada', 'Confirmada', 'Completada', 'Cancelada', 'Todas'];
-
   const filtered = visits.filter(v => filter === 'Todas' ? true : v.status === filter);
+
+  const scoreColor = (s) => s >= 50 ? 'bg-latitud-orange/10 text-latitud-orange'
+    : s >= 35 ? 'bg-green-50 text-green-600'
+    : s >= 15 ? 'bg-yellow-50 text-yellow-600'
+    : 'bg-gray-100 text-latitud-gray';
 
   if (loading) {
     return (
@@ -74,6 +86,8 @@ export default function AdminVisits() {
           </div>
         ) : (
           filtered.map(visit => {
+            const client = clients[visit.client_id];
+            const score = client?.buyer_intent_score ?? client?.lead_score ?? 0;
             const statusColors = {
               'solicitada': 'bg-yellow-50 text-yellow-600',
               'Confirmada': 'bg-latitud-orange/10 text-latitud-orange',
@@ -93,10 +107,18 @@ export default function AdminVisits() {
                     {visit.client_whatsapp && (
                       <p className="text-xs text-latitud-gray mt-0.5">{visit.client_whatsapp}</p>
                     )}
+                    {visit.client_email && (
+                      <p className="text-xs text-latitud-gray flex items-center gap-1 mt-0.5"><Mail size={10} /> {visit.client_email}</p>
+                    )}
                   </div>
-                  <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize shrink-0 ${statusColors[visit.status] || 'bg-gray-100 text-latitud-gray'}`}>
-                    {visit.status}
-                  </span>
+                  <div className="flex flex-col items-end gap-1 shrink-0">
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${statusColors[visit.status] || 'bg-gray-100 text-latitud-gray'}`}>
+                      {visit.status}
+                    </span>
+                    <span className={`text-[10px] font-semibold px-2 py-1 rounded-full flex items-center gap-0.5 ${scoreColor(score)}`}>
+                      <Zap size={9} /> {score} pts
+                    </span>
+                  </div>
                 </div>
                 <div className="flex items-center gap-4 text-xs text-latitud-gray mb-3">
                   <span className="flex items-center gap-1"><Calendar size={10} /> {visit.preferred_day || visit.requested_date || '—'}</span>

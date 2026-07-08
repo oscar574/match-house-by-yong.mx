@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Calendar, CheckCircle, Clock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { addLeadScore } from '@/lib/leadScoring';
+import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 
 const TIMES = ['9:00 AM', '10:00 AM', '11:00 AM', '12:00 PM', '1:00 PM', '3:00 PM', '4:00 PM', '5:00 PM'];
 
@@ -67,6 +67,19 @@ export default function VisitModal({ open, onClose, property, clientId, clientNa
         await base44.entities.Client.update(clientId, updates);
       } catch (e) { /* ignore */ }
     }
+
+    try {
+      await ensureLeadTask({
+        clientId,
+        clientName: name,
+        advisor: property.advisor_name,
+        title: `Confirmar cita - ${property.title}`,
+        taskType: 'Confirmación de visita',
+        priority: 'Alta',
+        propertyId: property.id,
+        propertyName: property.title
+      });
+    } catch (e) { /* ignore */ }
 
     setSaving(false);
     setDone(true);

@@ -10,7 +10,7 @@ import VisitModal from '@/components/VisitModal';
 import InsightModal from '@/components/InsightModal';
 import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
-import { addLeadScore } from '@/lib/leadScoring';
+import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 
 // Only show homes that generate commission
@@ -179,6 +179,10 @@ export default function Discover() {
     }
 
     await base44.entities.Client.update(clientId, updates);
+
+    if (type === 'like' && ((client?.liked_count || 0) + 1) === 3) {
+      ensureLeadTask({ clientId, clientName: client?.name, advisor: client?.assigned_advisor, title: `Cliente guardó 3 propiedades — enviar recomendaciones`, taskType: 'Enviar propiedades', priority: 'Media' });
+    }
 
     const newCount = reactionCount + 1;
     setReactionCount(newCount);

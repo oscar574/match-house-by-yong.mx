@@ -1,8 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Filter, Heart, Calendar, MapPin, Zap } from 'lucide-react';
+import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
+
+const timeAgo = (iso) => {
+  if (!iso) return '—';
+  const d = new Date(iso);
+  const diff = Date.now() - d.getTime();
+  const days = Math.floor(diff / 86400000);
+  if (days <= 0) return 'Hoy';
+  if (days === 1) return 'Ayer';
+  if (days < 7) return `Hace ${days} días`;
+  return d.toLocaleDateString('es-MX', { day: 'numeric', month: 'short' });
+};
 
 export default function AdminClients() {
   const [clients, setClients] = useState([]);
@@ -11,7 +22,7 @@ export default function AdminClients() {
   const [filter, setFilter] = useState('all');
 
   useEffect(() => {
-    base44.entities.Client.list('-created_date', 50).then(c => {
+    base44.entities.Client.list('-created_date', 100).then(c => {
       setClients(c);
       setLoading(false);
     });
@@ -65,40 +76,49 @@ export default function AdminClients() {
 
       {/* Client list */}
       <div className="space-y-3">
-        {filteredClients.map(client => (
+        {filteredClients.length === 0 ? (
+          <div className="text-center py-12">
+            <p className="text-sm text-latitud-gray">No hay clientes en esta categoría</p>
+          </div>
+        ) : filteredClients.map(client => {
+          const score = client.buyer_intent_score ?? client.lead_score ?? 0;
+          return (
           <Link key={client.id} to={`/admin/client/${client.id}`} className="block bg-white rounded-2xl p-4 shadow-sm">
             <div className="flex items-start justify-between mb-2">
-              <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-full bg-latitud-light flex items-center justify-center">
+              <div className="flex items-center gap-3 min-w-0">
+                <div className="w-10 h-10 rounded-full bg-latitud-light flex items-center justify-center shrink-0">
                   <span className="text-sm font-bold text-latitud-orange">{client.name?.[0]}</span>
                 </div>
-                <div>
-                  <p className="text-sm font-semibold text-latitud-black">{client.name}</p>
-                  <p className="text-xs text-latitud-gray">{client.whatsapp}</p>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-latitud-black truncate">{client.name}</p>
+                  <p className="text-xs text-latitud-gray truncate">{client.whatsapp}</p>
+                  {client.email && <p className="text-xs text-latitud-gray flex items-center gap-1 truncate"><Mail size={10} className="shrink-0" /> {client.email}</p>}
                 </div>
               </div>
-              <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize ${
-                (client.lead_status || 'evaluando') === 'prioridad máxima' ? 'bg-red-50 text-red-500' :
-                (client.lead_status || 'evaluando') === 'alta intención' ? 'bg-latitud-orange/10 text-latitud-orange' :
-                (client.lead_status || 'evaluando') === 'lead calificado' ? 'bg-green-50 text-green-600' :
-                (client.lead_status || 'evaluando') === 'interesado' ? 'bg-yellow-50 text-yellow-600' :
+              <span className={`text-[10px] font-semibold px-2 py-1 rounded-full capitalize shrink-0 ${
+                (client.lead_status || 'explorando') === 'prioridad máxima' ? 'bg-red-50 text-red-500' :
+                (client.lead_status || 'explorando') === 'alta intención' ? 'bg-latitud-orange/10 text-latitud-orange' :
+                (client.lead_status || 'explorando') === 'lead calificado' ? 'bg-green-50 text-green-600' :
+                (client.lead_status || 'explorando') === 'interesado' ? 'bg-yellow-50 text-yellow-600' :
                 'bg-gray-100 text-latitud-gray'
               }`}>
-                {getLeadStatusLabel(client.lead_status || 'evaluando')}
+                {getLeadStatusLabel(client.lead_status || 'explorando')}
               </span>
             </div>
-            <div className="flex items-center gap-4 text-xs text-latitud-gray">
-              <span className="flex items-center gap-1"><Zap size={10} className="text-latitud-orange" /> {client.lead_score || 0} pts</span>
-              <span className="flex items-center gap-1"><MapPin size={10} /> {client.city || '—'}</span>
-              <span className="flex items-center gap-1"><Heart size={10} className="text-red-400" /> {client.liked_count || 0}</span>
-              <span className="flex items-center gap-1"><Calendar size={10} /> {client.visit_requests_count || 0} visitas</span>
+            <div className="flex items-center gap-4 text-xs text-latitud-gray mb-2">
+              <span className="flex items-center gap-1"><Zap size={10} className="text-latitud-orange" /> {score} pts</span>
+              <span className="flex items-center gap-1"><Heart size={10} className="text-red-400" /> {client.liked_count || 0} favoritas</span>
+              <span className="flex items-center gap-1"><Calendar size={10} /> {client.visit_requests_count || 0} citas</span>
+              <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(client.last_activity_date)}</span>
             </div>
-            <div className="flex items-center gap-2 mt-2">
-              <span className="text-[10px] bg-latitud-light px-2 py-0.5 rounded-full text-latitud-gray">{client.budget_range || 'Sin presupuesto'}</span>
-              <span className="text-[10px] bg-latitud-light px-2 py-0.5 rounded-full text-latitud-gray">{client.commercial_stage || 'Nuevo'}</span>
+            <div className="flex items-center gap-2 flex-wrap">
+              {client.budget_range && <span className="text-[10px] bg-latitud-light px-2 py-0.5 rounded-full text-latitud-gray">{client.budget_range}</span>}
+              {(client.favorite_zones || []).slice(0, 3).map(z => (
+                <span key={z} className="text-[10px] bg-latitud-orange/10 text-latitud-orange px-2 py-0.5 rounded-full flex items-center gap-0.5"><MapPin size={8} /> {z}</span>
+              ))}
             </div>
           </Link>
-        ))}
+        );})}
       </div>
     </div>
   );
