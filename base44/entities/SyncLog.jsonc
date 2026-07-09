@@ -1,0 +1,86 @@
+{
+  "name": "SyncLog",
+  "type": "object",
+  "properties": {
+    "started_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "finished_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "mode": {
+      "type": "string",
+      "enum": [
+        "mls",
+        "standard",
+        "demo"
+      ],
+      "default": "mls"
+    },
+    "status": {
+      "type": "string",
+      "enum": [
+        "syncing",
+        "synced",
+        "sync_error",
+        "partial"
+      ],
+      "default": "syncing"
+    },
+    "pages_processed": {
+      "type": "number",
+      "default": 0
+    },
+    "imported_count": {
+      "type": "number",
+      "default": 0
+    },
+    "updated_count": {
+      "type": "number",
+      "default": 0
+    },
+    "hidden_count": {
+      "type": "number",
+      "default": 0
+    },
+    "visible_count": {
+      "type": "number",
+      "default": 0
+    },
+    "no_commission_count": {
+      "type": "number",
+      "default": 0
+    },
+    "missing_photos_count": {
+      "type": "number",
+      "default": 0
+    },
+    "missing_construction_count": {
+      "type": "number",
+      "default": 0
+    },
+    "duplicate_count": {
+      "type": "number",
+      "default": 0
+    },
+    "error_count": {
+      "type": "number",
+      "default": 0
+    },
+    "error_message": {
+      "type": "string"
+    },
+    "triggered_by": {
+      "type": "string"
+    },
+    "duration_seconds": {
+      "type": "number",
+      "default": 0
+    }
+  },
+  "required": [
+    "mode"
+  ]
+}
