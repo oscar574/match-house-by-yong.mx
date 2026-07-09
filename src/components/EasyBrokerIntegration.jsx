@@ -14,6 +14,7 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
   const [logs, setLogs] = useState(null);
   const [showLogs, setShowLogs] = useState(false);
   const [standardSynced, setStandardSynced] = useState(false);
+  const [progress, setProgress] = useState(null);
 
   const apiKeyConfigured = connStatus?.status === 'connected';
   const standardAvailable = connStatus?.status === 'connected';
@@ -66,22 +67,71 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
     }
   };
 
-  const runSyncNow = async () => {
+  const runBatchedSync = async (isResync) => {
     setSyncing(true);
     setSyncResult(null);
+    setProgress(null);
     try {
-      const res = await base44.functions.invoke('syncEasyBrokerStandardProperties', { preview: false });
-      const data = res.data || res;
-      setSyncResult(data);
-      if (data.status === 'ok') setStandardSynced(true);
+      let cleanupData = null;
+      if (isResync) {
+        const cl = await base44.functions.invoke('syncEasyBrokerStandardProperties', { action: 'cleanup' });
+        cleanupData = cl.data || cl;
+      }
+      const totalEstimate = connStatus?.total_properties ? Math.ceil(connStatus.total_properties / 50) : null;
+      let agg = { imported: 0, updated: 0, visible: 0, hidden: 0, dup: 0, errors: 0 };
+      let nextStartPage = 1;
+      while (nextStartPage) {
+        setProgress({ page: nextStartPage, total: totalEstimate });
+        const res = await base44.functions.invoke('syncEasyBrokerStandardProperties', { start_page: nextStartPage });
+        const data = res.data || res;
+        if (data.status !== 'ok') {
+          setSyncResult({ status: 'error', message: data.message || 'Sync error.', resync: isResync, cleanup: cleanupData });
+          setSyncing(false);
+          setProgress(null);
+          return;
+        }
+        const s = data.summary || {};
+        agg.imported += s.imported_count || 0;
+        agg.updated += s.updated_count || 0;
+        agg.visible += s.visible_count || 0;
+        agg.hidden += s.hidden_count || 0;
+        agg.dup += s.duplicate_count || 0;
+        agg.errors += s.error_count || 0;
+        nextStartPage = data.next_start_page || null;
+      }
+      let finalizeData = null;
+      if (isResync) {
+        const fin = await base44.functions.invoke('syncEasyBrokerStandardProperties', { action: 'finalize' });
+        finalizeData = fin.data || fin;
+      }
+      setSyncResult({
+        status: 'ok',
+        resync: isResync,
+        cleanup: cleanupData,
+        finalize: finalizeData,
+        summary: {
+          imported_count: agg.imported,
+          updated_count: agg.updated,
+          visible_count: agg.visible,
+          hidden_count: agg.hidden,
+          duplicate_count: agg.dup,
+          error_count: agg.errors,
+          duration_seconds: 0
+        }
+      });
+      if (agg.visible > 0) setStandardSynced(true);
       if (onSynced) await onSynced();
       await loadLogs();
     } catch (e) {
-      setSyncResult({ status: 'error', message: e.message || 'Error en sincronización.' });
+      setSyncResult({ status: 'error', message: e.message || 'Error en sincronización.', resync: isResync });
     } finally {
       setSyncing(false);
+      setProgress(null);
     }
   };
+
+  const runSyncNow = () => runBatchedSync(false);
+  const runResync = () => runBatchedSync(true);
 
   const loadLogs = async () => {
     try {
@@ -191,7 +241,30 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
         <Row label="MLS access" value={mlsLabel} ok={mlsAccess} />
         <Row label="Current data source" value={currentModeLabel} />
         <Row label="Last standard sync" value={lastStandardSync} />
+        {connStatus?.total_properties != null && (
+          <Row label="Cuenta detectada" value={connStatus.total_properties + ' totales'} ok={apiKeyConfigured} />
+        )}
       </div>
+
+      {/* Account diagnostics */}
+      {apiKeyConfigured && connStatus?.sample_properties?.length > 0 && (
+        <div className="rounded-xl border border-gray-100 p-3 mb-3">
+          <p className="text-[11px] font-semibold text-latitud-gray uppercase tracking-wider mb-2">Primeras propiedades detectadas</p>
+          <div className="space-y-1">
+            {connStatus.sample_properties.map(s => (
+              <div key={s.public_id} className="flex items-center gap-2 text-[11px]">
+                <span className="text-latitud-gray font-mono shrink-0">{s.public_id}</span>
+                <span className="text-latitud-black truncate">{s.title || 'Sin título'}</span>
+              </div>
+            ))}
+          </div>
+          {connStatus.total_properties != null && connStatus.total_properties <= 10 && (
+            <p className="mt-2 text-[11px] text-[#B42318] flex items-start gap-1">
+              <AlertTriangle size={11} className="mt-0.5 shrink-0" /> Cuenta con pocas propiedades ({connStatus.total_properties}). Verifica que la API key pertenezca a la cuenta correcta (~400) y usa Resync Completo.
+            </p>
+          )}
+        </div>
+      )}
 
       {/* Standard inventory stats */}
       <div className="rounded-xl border border-gray-100 p-3 mb-3">
@@ -225,6 +298,24 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
         <ActionBtn icon={Eye} label="Sync Standard Preview" loading={syncing} disabled={!standardAvailable} onClick={runSyncPreview} />
         <ActionBtn icon={RefreshCw} label="Sync Standard Now" primary loading={syncing} disabled={!standardAvailable} onClick={runSyncNow} />
       </div>
+      <button
+        onClick={runResync}
+        disabled={syncing || !standardAvailable}
+        className="w-full flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-semibold mb-2 bg-latitud-black text-latitud-orange transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+      >
+        <RefreshCw size={14} className={syncing ? 'animate-spin' : ''} />
+        Resync Completo (Limpieza)
+      </button>
+      {syncing && progress && (
+        <div className="rounded-xl bg-latitud-light p-3 mb-3 text-center">
+          <p className="text-xs font-semibold text-latitud-black">
+            Sincronizando página {progress.page}{progress.total ? ` de ${progress.total}` : ''}…
+          </p>
+          <div className="mt-2 h-1.5 bg-white rounded-full overflow-hidden">
+            <div className="h-full bg-latitud-orange transition-all" style={{ width: progress.total ? Math.min(100, Math.round((progress.page / progress.total) * 100)) + '%' : '40%' }} />
+          </div>
+        </div>
+      )}
       <button
         onClick={() => handleMode('standard')}
         disabled={mode === 'standard' || !standardEnabled}
@@ -309,18 +400,26 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
       {syncResult && (
         <div className={`rounded-xl p-3 mb-3 ${syncResult.status === 'ok' ? 'bg-green-50' : 'bg-red-50'}`}>
           <p className={`text-[11px] font-semibold uppercase tracking-wider mb-2 ${syncResult.status === 'ok' ? 'text-green-700' : 'text-[#B42318]'}`}>
-            {syncResult.status === 'ok' ? 'Standard sync completed' : 'Sync failed'}
+            {syncResult.status === 'ok' ? (syncResult.resync ? 'Resync completo' : 'Standard sync completed') : 'Sync failed'}
           </p>
           {syncResult.status === 'ok' && syncResult.summary ? (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Sum label="Imported" value={syncResult.summary.imported_count} />
-              <Sum label="Updated" value={syncResult.summary.updated_count} />
-              <Sum label="Visible to buyer" value={syncResult.summary.visible_count} accent />
-              <Sum label="Total hidden" value={syncResult.summary.hidden_count} />
-              <Sum label="Duplicates" value={syncResult.summary.duplicate_count} />
-              <Sum label="Errors" value={syncResult.summary.error_count} />
-              <Sum label="Duration" value={syncResult.summary.duration_seconds + 's'} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Sum label="Imported" value={syncResult.summary.imported_count} />
+                <Sum label="Updated" value={syncResult.summary.updated_count} />
+                <Sum label="Visible to buyer" value={syncResult.summary.visible_count} accent />
+                <Sum label="Total hidden" value={syncResult.summary.hidden_count} />
+                <Sum label="Duplicates" value={syncResult.summary.duplicate_count} />
+                <Sum label="Errors" value={syncResult.summary.error_count} />
+              </div>
+              {syncResult.resync && (
+                <p className="text-[11px] text-green-700 mt-2 pt-2 border-t border-green-100">
+                  {syncResult.cleanup && syncResult.cleanup.deleted_count != null ? `Limpieza: ${syncResult.cleanup.deleted_count} EasyBroker eliminadas. ` : ''}
+                  {syncResult.finalize && syncResult.finalize.demos_hidden != null ? `${syncResult.finalize.demos_hidden} demo ocultas. ` : ''}
+                  {syncResult.summary.visible_count} reales visibles.
+                </p>
+              )}
+            </>
           ) : (
             <p className="text-[11px] text-[#B42318]">{syncResult.message || syncResult.error || 'Error.'}</p>
           )}

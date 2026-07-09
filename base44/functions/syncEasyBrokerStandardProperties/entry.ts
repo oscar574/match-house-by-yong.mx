@@ -26,11 +26,15 @@ function currencyOf(sale, fallback) {
   return ['MXN', 'USD'].includes(c) ? c : 'MXN';
 }
 
-function mapStatus(s) {
-  if (s === 'published') return 'Disponible';
-  if (s === 'sold') return 'Vendida';
-  if (s === 'rented') return 'Rentada';
-  if (s === 'reserved' || s === 'apartada') return 'Apartada';
+function mapStatus(obj) {
+  const o = obj || {};
+  // EasyBroker's payload has no `status` field; "published" is signalled by a
+  // non-null published_at timestamp.
+  if (o.published_at) return 'Disponible';
+  if (o.status === 'sold') return 'Vendida';
+  if (o.status === 'rented') return 'Rentada';
+  if (o.status === 'reserved' || o.status === 'apartada') return 'Apartada';
+  if (o.status === 'published') return 'Disponible';
   return 'Pausada';
 }
 
@@ -72,7 +76,7 @@ function mapDetail(d, item) {
     description: d.description || '',
     property_type: mapType(d.property_type || item.property_type),
     operation_type: opType(d.operations || item.operations),
-    status: mapStatus(d.status || item.status),
+    status: mapStatus(d),
     price: sale ? sale.amount : 0,
     currency: currencyOf(sale, (item.operations || [])[0] && (item.operations || [])[0].currency),
     cover_photo_url: cover,
@@ -127,7 +131,7 @@ function mapMinimal(item, reason) {
     description: '',
     property_type: mapType(item.property_type),
     operation_type: opType(item.operations),
-    status: mapStatus(item.status) || 'Disponible',
+    status: mapStatus(item) || 'Disponible',
     price: sale ? sale.amount : 0,
     currency: currencyOf(sale, null),
     cover_photo_url: item.title_image_full || null,
@@ -184,7 +188,9 @@ Deno.serve(async (req) => {
 
     let payload = {};
     try { payload = await req.json(); } catch (e) { /* no body ok */ }
-    const preview = payload.preview === true;
+    const action = payload.action || 'sync';
+    const startPage = Math.max(1, Number(payload.start_page) || 1);
+    const preview = action === 'sync' && payload.preview === true;
 
     const apiKey = Deno.env.get('EASYBROKER_API_KEY');
     const startedAt = new Date().toISOString();
@@ -192,6 +198,38 @@ Deno.serve(async (req) => {
 
     if (!apiKey) {
       return Response.json({ status: 'api_key_missing', message: 'EASYBROKER_API_KEY not set in backend.' });
+    }
+
+    // Resync step (a): delete all previously synced own-inventory EasyBroker
+    // properties so records from a wrong account are wiped before re-import.
+    if (action === 'cleanup') {
+      let result = null;
+      try {
+        result = await base44.asServiceRole.entities.Property.deleteMany({ own_inventory: true });
+      } catch (e) {
+        return Response.json({ status: 'error', action: 'cleanup', message: e.message });
+      }
+      const deletedCount = (result && (result.deleted_count || result.count || result.deleted || result.modified_count)) || null;
+      return Response.json({ status: 'ok', action: 'cleanup', deleted_count: deletedCount });
+    }
+
+    // Resync step (c): if at least 1 real (own-inventory) property is visible,
+    // hide all demo properties (no easybroker_public_id) without deleting them.
+    if (action === 'finalize') {
+      const visibleReal = await base44.asServiceRole.entities.Property.filter({ own_inventory: true, is_visible_to_buyer: true }, '-created_date', 1);
+      const realVisible = visibleReal.length;
+      let demosHidden = null;
+      if (realVisible > 0) {
+        let upd = null;
+        try {
+          upd = await base44.asServiceRole.entities.Property.updateMany(
+            { easybroker_public_id: null },
+            { $set: { is_visible_to_buyer: false, is_visible_in_app: false, visible_to_clients: false, hidden_reason: 'manual_hidden' } }
+          );
+        } catch (e) { /* ignore */ }
+        demosHidden = (upd && (upd.modified_count || upd.count || upd.updated || upd.matched_count)) || null;
+      }
+      return Response.json({ status: 'ok', action: 'finalize', real_visible: realVisible, demos_hidden: demosHidden });
     }
 
     const headers = { 'X-Authorization': apiKey, 'accept': 'application/json' };
@@ -207,9 +245,13 @@ Deno.serve(async (req) => {
       });
     }
 
-    let page = 1;
-    let next = null;
+    const PAGES_PER_BATCH = 3;
+    const MAX_PAGES = 30;
+    const pagesPerBatch = preview ? 1 : PAGES_PER_BATCH;
+    let page = startPage;
+    let pagesThisBatch = 0;
     let pagesProcessed = 0;
+    let lastPagination = null;
     let imported = 0, updated = 0, hidden = 0, visible = 0;
     let photos = 0, constr = 0, dup = 0, errors = 0;
     // Detailed preview counters
@@ -217,9 +259,8 @@ Deno.serve(async (req) => {
     let reasonCounts = {};
     const bumpReason = r => { if (r) reasonCounts[r] = (reasonCounts[r] || 0) + 1; };
     const processed = [];
-    const MAX_PAGES = 20;
 
-    do {
+    while (pagesThisBatch < pagesPerBatch && page <= MAX_PAGES) {
       let res;
       try {
         res = await fetch(base + '?page=' + page + '&limit=50', { headers });
@@ -244,30 +285,53 @@ Deno.serve(async (req) => {
       pagesProcessed++;
       const content = data.content || [];
 
+      // First pass: classify list items (no-price -> minimal) vs need-detail,
+      // and gather preview counters. The /properties list payload has no status
+      // or published_at, so status is resolved from each detail below.
+      const minimalBatch = [];
+      const needDetail = [];
       for (const item of content) {
-        try {
-          totalDetected++;
-          const isHouse = (item.property_type || '').toLowerCase() === 'house';
-          const sale = saleOp(item.operations || []);
-          if (isHouse) houses++;
-          if (sale) sales++;
-          if (sale && sale.amount) withPrice++;
+        totalDetected++;
+        const isHouse = (item.property_type || '').toLowerCase() === 'house';
+        const sale = saleOp(item.operations || []);
+        if (isHouse) houses++;
+        if (sale) sales++;
+        if (sale && sale.amount) withPrice++;
+        if (!sale || !sale.amount) {
+          minimalBatch.push(mapMinimal(item, 'missing_price'));
+          hidden++;
+          bumpReason('missing_price');
+        } else {
+          needDetail.push(item);
+        }
+      }
 
-          if (!sale || !sale.amount) {
-            const m = mapMinimal(item, 'missing_price');
-            if (!preview) await upsertProperty(base44, m);
-            hidden++;
-            bumpReason('missing_price');
-            continue;
-          }
-
+      // Fetch each detail in parallel chunks to keep batches fast (the list
+      // payload lacks photos / published_at, so the detail GET is required).
+      const CHUNK = 3;
+      const detailResults = [];
+      for (let i = 0; i < needDetail.length; i += CHUNK) {
+        const chunk = needDetail.slice(i, i + CHUNK);
+        const res = await Promise.all(chunk.map(async (item) => {
           let d = null;
-          try {
-            const dr = await fetch(base + '/' + item.public_id, { headers });
-            if (dr.ok) d = await dr.json(); else errors++;
-          } catch (e) { errors++; }
-          if (!d) continue;
+          for (let attempt = 0; attempt < 2 && !d; attempt++) {
+            try {
+              const dr = await fetch(base + '/' + item.public_id, { headers });
+              if (dr.ok) d = await dr.json();
+            } catch (e) { /* transient — retry */ }
+            if (!d && attempt === 0) await new Promise(r => setTimeout(r, 250));
+          }
+          if (!d) errors++;
+          return { item, d };
+        }));
+        detailResults.push(...res);
+      }
 
+      // Map + evaluate detail-fetched properties.
+      const detailBatch = [];
+      for (const { item, d } of detailResults) {
+        if (!d) continue;
+        try {
           const mapped = mapDetail(d, item);
           const vis = evaluateVisibility(mapped);
           mapped.is_visible_to_buyer = vis.visible;
@@ -279,20 +343,6 @@ Deno.serve(async (req) => {
           if (mapped.cover_photo_url || (mapped.photo_urls && mapped.photo_urls.length > 0)) withPhotos++;
           if (vis.visible) wouldPass++;
 
-          let result = { id: null, created: false };
-          if (!preview) {
-            result = await upsertProperty(base44, mapped);
-            if (result.created) imported++; else updated++;
-            processed.push({
-              id: result.id,
-              price: mapped.price,
-              construction_m2: mapped.construction_m2,
-              zone: mapped.zone,
-              bedrooms: mapped.bedrooms,
-              bathrooms: mapped.bathrooms
-            });
-          }
-
           if (vis.visible) visible++;
           else {
             hidden++;
@@ -300,13 +350,52 @@ Deno.serve(async (req) => {
             if (vis.reason === 'missing_photos') photos++;
             else if (vis.reason === 'missing_construction_m2') constr++;
           }
+          detailBatch.push(mapped);
         } catch (e) { errors++; }
       }
 
-      next = (data.pagination && data.pagination.next_page) || null;
+      // Batch upsert (minimal + detail) per page: one filter($in) + bulkCreate +
+      // bulkUpdate. Much faster than per-property filter+write.
+      if (!preview) {
+        const allMapped = [...minimalBatch, ...detailBatch];
+        if (allMapped.length > 0) {
+          const ids = allMapped.map(m => m.easybroker_public_id).filter(Boolean);
+          let existing = [];
+          if (ids.length > 0) {
+            try { existing = await base44.asServiceRole.entities.Property.filter({ easybroker_public_id: { $in: ids } }, '-created_date', 1000); } catch (e) { errors++; }
+          }
+          const existingMap = {};
+          existing.forEach(e => { if (e.easybroker_public_id) existingMap[e.easybroker_public_id] = e.id; });
+          const toCreate = [];
+          const toUpdate = [];
+          allMapped.forEach(m => {
+            const eid = existingMap[m.easybroker_public_id];
+            if (eid) toUpdate.push({ id: eid, ...m });
+            else toCreate.push(m);
+          });
+          let createdRecs = [];
+          if (toCreate.length > 0) {
+            try { createdRecs = await base44.asServiceRole.entities.Property.bulkCreate(toCreate); } catch (e) { errors++; }
+            imported += (createdRecs && createdRecs.length) || toCreate.length;
+          }
+          if (toUpdate.length > 0) {
+            try { await base44.asServiceRole.entities.Property.bulkUpdate(toUpdate); } catch (e) { errors++; }
+            updated += toUpdate.length;
+          }
+          const createdById = {};
+          (createdRecs || []).forEach(c => { if (c.easybroker_public_id) createdById[c.easybroker_public_id] = c.id; });
+          allMapped.forEach(m => {
+            const id = existingMap[m.easybroker_public_id] || createdById[m.easybroker_public_id];
+            if (id) processed.push({ id, price: m.price, construction_m2: m.construction_m2, zone: m.zone, bedrooms: m.bedrooms, bathrooms: m.bathrooms });
+          });
+        }
+      }
+
+      lastPagination = data.pagination;
+      pagesThisBatch++;
       page++;
-      if (pagesProcessed >= MAX_PAGES) break;
-    } while (next);
+      if (!lastPagination || !lastPagination.next_page) break;
+    }
 
     if (!preview && processed.length > 0) {
       const groups = {};
@@ -388,7 +477,9 @@ Deno.serve(async (req) => {
       hidden_reasons_summary: reasonCounts
     } : null;
 
-    return Response.json({ status: 'ok', preview: preview, summary: summary, preview_detail: previewDetail });
+    const hasMore = !!(lastPagination && lastPagination.next_page) && page <= MAX_PAGES;
+    const nextStartPage = hasMore ? page : null;
+    return Response.json({ status: 'ok', preview: preview, action: 'sync', start_page: startPage, next_start_page: nextStartPage, summary: summary, preview_detail: previewDetail });
   } catch (error) {
     return Response.json({ error: error.message }, { status: 500 });
   }

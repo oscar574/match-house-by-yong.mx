@@ -21,7 +21,7 @@ Deno.serve(async (req) => {
 
     let res;
     try {
-      res = await fetch('https://api.easybroker.com/v1/properties?limit=1', {
+      res = await fetch('https://api.easybroker.com/v1/properties?page=1&limit=5', {
         headers: { 'X-Authorization': apiKey, 'accept': 'application/json' }
       });
     } catch (e) {
@@ -34,11 +34,21 @@ Deno.serve(async (req) => {
     }
 
     if (res.status === 200) {
+      let body = null;
+      try { body = await res.json(); } catch (e) { /* ignore */ }
+      const total = body && body.pagination && body.pagination.total != null ? body.pagination.total : null;
+      const content = (body && body.content) || [];
+      const sample_properties = content.slice(0, 5).map(it => ({
+        public_id: it.public_id,
+        title: it.title || null
+      }));
       return Response.json({
         connected: true,
         status: 'connected',
         message: 'EasyBroker connection successful.',
         account_active: true,
+        total_properties: total,
+        sample_properties: sample_properties,
         tested_at: testedAt
       });
     }
