@@ -65,23 +65,17 @@ export function evaluateBuyerVisibility(p) {
   // Duplicates (copies, not masters) are hidden.
   if (p.is_duplicate === true) return { visible: false, reason: HIDDEN_REASONS.DUPLICATE_HIDDEN };
 
-  // Only houses for sale.
-  if (p.property_type !== 'Casa') return { visible: false, reason: HIDDEN_REASONS.NOT_HOUSE };
-  if (p.operation_type !== 'Venta') return { visible: false, reason: HIDDEN_REASONS.NOT_SALE };
-
-  // Must be active/available.
-  if (p.status !== 'Disponible') return { visible: false, reason: HIDDEN_REASONS.INACTIVE };
-
-  // Must have price + construction m2 + photos.
-  if (!(p.price > 0)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PRICE };
-  if (!hasConstructionM2(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_CONSTRUCTION_M2 };
-  if (!hasPhotos(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PHOTOS };
-
-  // Own inventory (connected account) is commercially valid for Latitud — no
-  // shared-commission gate applies. Collaborator inventory requires confirmed
-  // shared commission (handled below).
+  // Own inventory (connected EasyBroker Standard account) is commercially valid
+  // for Latitud — all property types and operations are visible (houses,
+  // apartments, land, commercial; sale and rental) as long as they pass the
+  // quality filters below. Collaborator/MLS inventory requires confirmed shared
+  // commission and only houses for sale.
   const isOwn = p.own_inventory === true || p.commission_status === 'own_inventory';
+
   if (!isOwn) {
+    // MLS / collaborator: only houses for sale with confirmed shared commission.
+    if (p.property_type !== 'Casa') return { visible: false, reason: HIDDEN_REASONS.NOT_HOUSE };
+    if (p.operation_type !== 'Venta') return { visible: false, reason: HIDDEN_REASONS.NOT_SALE };
     if (p.commission_status === 'not_shared') return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
     if (p.commission_status === 'unknown' || !p.commission_status) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
     if (!isCommissionConfirmed(p)) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
@@ -89,6 +83,15 @@ export function evaluateBuyerVisibility(p) {
       return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
     }
   }
+
+  // Quality filters (own inventory + MLS): active, price, area, photos.
+  if (p.status !== 'Disponible') return { visible: false, reason: HIDDEN_REASONS.INACTIVE };
+  if (!(p.price > 0)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PRICE };
+  // Land lots have no construction m² — use land_m2 instead.
+  const isLand = p.property_type === 'Terreno';
+  const hasArea = isLand ? (p.land_m2 || p.land_area || 0) > 0 : hasConstructionM2(p);
+  if (!hasArea) return { visible: false, reason: HIDDEN_REASONS.MISSING_CONSTRUCTION_M2 };
+  if (!hasPhotos(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PHOTOS };
 
   // Manual hide flags.
   if (p.is_visible_in_app === false || p.visible_to_clients === false) {

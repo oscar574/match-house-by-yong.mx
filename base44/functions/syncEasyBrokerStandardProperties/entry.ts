@@ -42,14 +42,17 @@ function splitLocation(name) {
   return { neighborhood, city, state };
 }
 
-// Own-inventory visibility: quality filters only (no shared-commission gate).
+// Own-inventory visibility: quality filters only. All property types and
+// operations (houses, apartments, land, commercial; sale and rental) are visible
+// as long as they are active, have price, area and photos. No shared-commission
+// gate applies to own inventory.
 function evaluateVisibility(p) {
   if (p.is_duplicate === true) return { visible: false, reason: 'duplicate_hidden' };
-  if (p.property_type !== 'Casa') return { visible: false, reason: 'not_house' };
-  if (p.operation_type !== 'Venta') return { visible: false, reason: 'not_sale' };
   if (p.status !== 'Disponible') return { visible: false, reason: 'inactive' };
   if (!(p.price > 0)) return { visible: false, reason: 'missing_price' };
-  if (!p.construction_m2) return { visible: false, reason: 'missing_construction_m2' };
+  // Land lots have no construction m² — use land_m2 instead.
+  const isLand = p.property_type === 'Terreno';
+  if (!(isLand ? p.land_m2 : p.construction_m2)) return { visible: false, reason: 'missing_construction_m2' };
   if (!p.cover_photo_url || !p.photo_urls || p.photo_urls.length === 0) return { visible: false, reason: 'missing_photos' };
   if (p.is_visible_in_app === false || p.visible_to_clients === false) return { visible: false, reason: 'manual_hidden' };
   return { visible: true, reason: null };
@@ -250,21 +253,7 @@ Deno.serve(async (req) => {
           if (sale) sales++;
           if (sale && sale.amount) withPrice++;
 
-          if (!isHouse) {
-            const m = mapMinimal(item, 'not_house');
-            if (!preview) await upsertProperty(base44, m);
-            hidden++;
-            bumpReason('not_house');
-            continue;
-          }
-          if (!sale) {
-            const m = mapMinimal(item, 'not_sale');
-            if (!preview) await upsertProperty(base44, m);
-            hidden++;
-            bumpReason('not_sale');
-            continue;
-          }
-          if (!sale.amount) {
+          if (!sale || !sale.amount) {
             const m = mapMinimal(item, 'missing_price');
             if (!preview) await upsertProperty(base44, m);
             hidden++;
