@@ -42,6 +42,16 @@ function mapStatus(obj) {
   return 'Pausada';
 }
 
+// Safety net: a record is "published" only if its detail status is 'published'
+// (or, lacking a status field, it has a non-null published_at). The list feed
+// is already filtered with search[statuses][]=published, but a property can
+// change state between the list and the detail fetch — discard those.
+function isPublished(d) {
+  if (!d) return false;
+  if (d.status) return d.status === 'published';
+  return !!d.published_at;
+}
+
 function splitLocation(name) {
   const parts = (name || '').split(',').map(x => x.trim()).filter(Boolean);
   const neighborhood = parts[0] || 'Sin zona';
@@ -204,6 +214,11 @@ Deno.serve(async (req) => {
     const action = payload.action || 'sync';
     const startPage = Math.max(1, Number(payload.start_page) || 1);
     const preview = action === 'sync' && payload.preview === true;
+    // sync_run_id identifies a single complete run across batched calls; the
+    // frontend generates one per run and passes it on every page. Used to mark
+    // processed properties and, on the last page, delete orphaned own-inventory
+    // records no longer published in EasyBroker.
+    const syncRunId = payload.sync_run_id || null;
 
     const apiKey = Deno.env.get('EASYBROKER_API_KEY');
     const startedAt = new Date().toISOString();
@@ -267,6 +282,8 @@ Deno.serve(async (req) => {
     let lastPagination = null;
     let imported = 0, updated = 0, hidden = 0, visible = 0;
     let photos = 0, constr = 0, dup = 0, errors = 0;
+    let removed = 0;
+    let reachedLastPage = false;
     // Detailed preview counters
     let totalDetected = 0, houses = 0, sales = 0, withPrice = 0, withPhotos = 0, withConstruction = 0, wouldPass = 0;
     let reasonCounts = {};
@@ -276,7 +293,7 @@ Deno.serve(async (req) => {
     while (pagesThisBatch < pagesPerBatch && page <= MAX_PAGES) {
       let res;
       try {
-        res = await fetch(base + '?page=' + page + '&limit=50', { headers });
+        res = await fetch(base + '?page=' + page + '&limit=50&search[statuses][]=published', { headers });
       } catch (e) {
         errors++;
         break;
@@ -344,6 +361,7 @@ Deno.serve(async (req) => {
       const detailBatch = [];
       for (const { item, d } of detailResults) {
         if (!d) continue;
+        if (!isPublished(d)) continue; // safety net: discard non-published
         try {
           const mapped = mapDetail(d, item);
           const vis = evaluateVisibility(mapped);
@@ -371,6 +389,7 @@ Deno.serve(async (req) => {
       // bulkUpdate. Much faster than per-property filter+write.
       if (!preview) {
         const allMapped = [...minimalBatch, ...detailBatch];
+        if (syncRunId) allMapped.forEach(m => { m.last_seen_sync_id = syncRunId; });
         if (allMapped.length > 0) {
           const ids = allMapped.map(m => m.easybroker_public_id).filter(Boolean);
           let existing = [];
@@ -407,7 +426,7 @@ Deno.serve(async (req) => {
       lastPagination = data.pagination;
       pagesThisBatch++;
       page++;
-      if (!lastPagination || !lastPagination.next_page) break;
+      if (!lastPagination || !lastPagination.next_page) { reachedLastPage = true; break; }
     }
 
     if (!preview && processed.length > 0) {
@@ -442,6 +461,20 @@ Deno.serve(async (req) => {
       }
     }
 
+    // Obsolete cleanup: only when this invocation reached the true last page of
+    // the run (not the MAX_PAGES cap, not an error break) and a sync_run_id is
+    // present. Deletes own-inventory properties not seen in this run — i.e. no
+    // longer published in EasyBroker (sold, paused, draft, withdrawn).
+    if (reachedLastPage && syncRunId && !preview) {
+      try {
+        const delRes = await base44.asServiceRole.entities.Property.deleteMany({
+          own_inventory: true,
+          last_seen_sync_id: { $ne: syncRunId }
+        });
+        removed = (delRes && (delRes.deleted_count || delRes.count || delRes.deleted || delRes.modified_count)) || 0;
+      } catch (e) { errors++; }
+    }
+
     const finishedAt = new Date().toISOString();
     const duration = Math.round((new Date(finishedAt).getTime() - new Date(startedAt).getTime()) / 1000);
     const finalStatus = errors > 0 && visible === 0 && imported === 0 && updated === 0 ? 'sync_error' : (errors > 0 ? 'partial' : 'synced');
@@ -456,6 +489,7 @@ Deno.serve(async (req) => {
       missing_photos_count: photos,
       missing_construction_count: constr,
       duplicate_count: dup,
+      removed_count: removed,
       error_count: errors,
       duration_seconds: duration
     };
@@ -472,6 +506,7 @@ Deno.serve(async (req) => {
         missing_photos_count: photos,
         missing_construction_count: constr,
         duplicate_count: dup,
+        removed_count: removed,
         error_count: errors,
         duration_seconds: duration
       });

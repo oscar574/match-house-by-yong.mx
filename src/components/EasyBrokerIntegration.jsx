@@ -78,11 +78,12 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
         cleanupData = cl.data || cl;
       }
       const totalEstimate = connStatus?.total_properties ? Math.ceil(connStatus.total_properties / 50) : null;
-      let agg = { imported: 0, updated: 0, visible: 0, hidden: 0, dup: 0, errors: 0 };
+      let agg = { imported: 0, updated: 0, visible: 0, hidden: 0, dup: 0, removed: 0, errors: 0 };
       let nextStartPage = 1;
+      const syncRunId = new Date().toISOString();
       while (nextStartPage) {
         setProgress({ page: nextStartPage, total: totalEstimate });
-        const res = await base44.functions.invoke('syncEasyBrokerStandardProperties', { start_page: nextStartPage });
+        const res = await base44.functions.invoke('syncEasyBrokerStandardProperties', { start_page: nextStartPage, sync_run_id: syncRunId });
         const data = res.data || res;
         if (data.status !== 'ok') {
           setSyncResult({ status: 'error', message: data.message || 'Sync error.', resync: isResync, cleanup: cleanupData });
@@ -96,6 +97,7 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
         agg.visible += s.visible_count || 0;
         agg.hidden += s.hidden_count || 0;
         agg.dup += s.duplicate_count || 0;
+        agg.removed += s.removed_count || 0;
         agg.errors += s.error_count || 0;
         nextStartPage = data.next_start_page || null;
       }
@@ -115,6 +117,7 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
           visible_count: agg.visible,
           hidden_count: agg.hidden,
           duplicate_count: agg.dup,
+          removed_count: agg.removed,
           error_count: agg.errors,
           duration_seconds: 0
         }
@@ -410,6 +413,7 @@ export default function EasyBrokerIntegration({ syncSummary, standardStats, onNa
                 <Sum label="Visible to buyer" value={syncResult.summary.visible_count} accent />
                 <Sum label="Total hidden" value={syncResult.summary.hidden_count} />
                 <Sum label="Duplicates" value={syncResult.summary.duplicate_count} />
+                <Sum label="Removed (obsoletas)" value={syncResult.summary.removed_count} />
                 <Sum label="Errors" value={syncResult.summary.error_count} />
               </div>
               {syncResult.resync && (

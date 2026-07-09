@@ -340,6 +340,9 @@
     "last_synced_at": {
       "type": "string",
       "format": "date-time"
+    },
+    "last_seen_sync_id": {
+      "type": "string"
     }
   },
   "required": [
