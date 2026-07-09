@@ -40,12 +40,14 @@ export default function AdminProperties() {
     };
   }, [properties]);
 
+  const loadProperties = async () => {
+    const p = await base44.entities.Property.list('-created_date', 50);
+    setProperties(p);
+    setDupStats(countDuplicates(p));
+  };
+
   useEffect(() => {
-    base44.entities.Property.list('-created_date', 50).then(p => {
-      setProperties(p);
-      setDupStats(countDuplicates(p));
-      setLoading(false);
-    });
+    loadProperties().then(() => setLoading(false));
   }, []);
 
   const runDuplicateDetection = async () => {
@@ -203,7 +205,7 @@ export default function AdminProperties() {
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
 
-      <EasyBrokerIntegration syncSummary={syncSummary} />
+      <EasyBrokerIntegration syncSummary={syncSummary} onNavigateReview={() => setViewMode('review')} onSynced={loadProperties} />
 
       <div className="flex gap-2 mb-4">
         <button onClick={() => setViewMode('inventory')} className={`px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'inventory' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>Inventario</button>
