@@ -1,14 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function mapType(t) {
-  const s = (t || '').toLowerCase();
+  const s = (t || '').toString().toLowerCase().trim();
+  if (!s) return 'Otro';
+  // English equivalents → Spanish canonical (compatibility)
   if (s === 'house') return 'Casa';
-  if (s === 'apartment') return 'Departamento';
+  if (s === 'apartment' || s === 'apt') return 'Departamento';
   if (s === 'penthouse') return 'Penthouse';
   if (s === 'villa') return 'Villa';
-  if (s === 'land' || s === 'terrain' || s === 'lot') return 'Terreno';
-  if (s === 'commercial' || s === 'office' || s === 'local') return 'Local Comercial';
-  return 'Departamento';
+  if (s === 'land' || s === 'lot' || s === 'terrain') return 'Terreno';
+  if (s === 'ranch') return 'Rancho';
+  if (s === 'commercial' || s === 'office' || s === 'local' || s === 'store') return 'Local Comercial';
+  // Preserve EasyBroker's Spanish type, normalized to title case.
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function saleOp(operations) {

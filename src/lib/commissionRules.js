@@ -57,6 +57,15 @@ export function hasConstructionM2(p) {
   return (p?.construction_m2 || p?.construction_area || 0) > 0;
 }
 
+// Land-type set: lots, ranchos, quintas, huertas, etc. have no construction m² —
+// use land_m2 as the valid area measure instead. English equivalents included
+// for compatibility.
+const LAND_TYPES = new Set(['terreno','terreno comercial','terreno industrial','terreno habitacional','lote','huerta','rancho','quinta','land','lot','terrain','ranch']);
+export function isLandType(pt) {
+  if (!pt) return false;
+  return LAND_TYPES.has(pt.toString().toLowerCase().trim());
+}
+
 // Evaluate a property against the commercial rule.
 // Returns { visible: boolean, reason: string|null }.
 export function evaluateBuyerVisibility(p) {
@@ -88,7 +97,7 @@ export function evaluateBuyerVisibility(p) {
   if (p.status !== 'Disponible') return { visible: false, reason: HIDDEN_REASONS.INACTIVE };
   if (!(p.price > 0)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PRICE };
   // Land lots have no construction m² — use land_m2 instead.
-  const isLand = p.property_type === 'Terreno';
+  const isLand = isLandType(p.property_type);
   const hasArea = isLand ? (p.land_m2 || p.land_area || 0) > 0 : hasConstructionM2(p);
   if (!hasArea) return { visible: false, reason: HIDDEN_REASONS.MISSING_CONSTRUCTION_M2 };
   if (!hasPhotos(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PHOTOS };

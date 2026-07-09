@@ -1,14 +1,18 @@
 import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 
 function mapType(t) {
-  const s = (t || '').toLowerCase();
+  const s = (t || '').toString().toLowerCase().trim();
+  if (!s) return 'Otro';
+  // English equivalents → Spanish canonical (compatibility)
   if (s === 'house') return 'Casa';
-  if (s === 'apartment') return 'Departamento';
+  if (s === 'apartment' || s === 'apt') return 'Departamento';
   if (s === 'penthouse') return 'Penthouse';
   if (s === 'villa') return 'Villa';
-  if (s === 'land' || s === 'terrain' || s === 'lot') return 'Terreno';
-  if (s === 'commercial' || s === 'office' || s === 'local') return 'Local Comercial';
-  return 'Departamento';
+  if (s === 'land' || s === 'lot' || s === 'terrain') return 'Terreno';
+  if (s === 'ranch') return 'Rancho';
+  if (s === 'commercial' || s === 'office' || s === 'local' || s === 'store') return 'Local Comercial';
+  // Preserve EasyBroker's Spanish type, normalized to title case.
+  return s.charAt(0).toUpperCase() + s.slice(1);
 }
 
 function saleOp(operations) {
@@ -46,6 +50,15 @@ function splitLocation(name) {
   return { neighborhood, city, state };
 }
 
+// Land-type set: lots, ranchos, quintas, huertas, etc. have no construction m² —
+// use land_m2 as the valid area measure instead. English equivalents included
+// for compatibility.
+const LAND_TYPES = new Set(['terreno','terreno comercial','terreno industrial','terreno habitacional','lote','huerta','rancho','quinta','land','lot','terrain','ranch']);
+function isLandType(pt) {
+  if (!pt) return false;
+  return LAND_TYPES.has(pt.toString().toLowerCase().trim());
+}
+
 // Own-inventory visibility: quality filters only. All property types and
 // operations (houses, apartments, land, commercial; sale and rental) are visible
 // as long as they are active, have price, area and photos. No shared-commission
@@ -55,7 +68,7 @@ function evaluateVisibility(p) {
   if (p.status !== 'Disponible') return { visible: false, reason: 'inactive' };
   if (!(p.price > 0)) return { visible: false, reason: 'missing_price' };
   // Land lots have no construction m² — use land_m2 instead.
-  const isLand = p.property_type === 'Terreno';
+  const isLand = isLandType(p.property_type);
   if (!(isLand ? p.land_m2 : p.construction_m2)) return { visible: false, reason: 'missing_construction_m2' };
   if (!p.cover_photo_url || !p.photo_urls || p.photo_urls.length === 0) return { visible: false, reason: 'missing_photos' };
   if (p.is_visible_in_app === false || p.visible_to_clients === false) return { visible: false, reason: 'manual_hidden' };
@@ -246,7 +259,7 @@ Deno.serve(async (req) => {
     }
 
     const PAGES_PER_BATCH = 3;
-    const MAX_PAGES = 30;
+    const MAX_PAGES = 100;
     const pagesPerBatch = preview ? 1 : PAGES_PER_BATCH;
     let page = startPage;
     let pagesThisBatch = 0;

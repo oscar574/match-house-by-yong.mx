@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Heart, Calendar, Info, MessageCircle, Sparkles } from 'lucide-react';
@@ -34,9 +34,32 @@ export default function Discover() {
   const [leadScore, setLeadScore] = useState(0);
   const { toast } = useToast();
 
+  // Progressive loading refs
+  const [loadEpoch, setLoadEpoch] = useState(0);
+  const reactedIdsRef = useRef(new Set());
+  const fetchedIdsRef = useRef(new Set());
+  const exhaustedRef = useRef(false);
+  const loadingMoreRef = useRef(false);
+  const emptyStreakRef = useRef(0);
+  const clientRef = useRef(null);
+
   useEffect(() => {
     loadData();
   }, []);
+
+  const enrichAndSort = (items, clientData) => {
+    let avail = items.filter(isCommissionVisible);
+    avail = avail.filter(p => !reactedIdsRef.current.has(p.id));
+    avail = avail.filter(p => p.is_duplicate !== true);
+    if (clientData) {
+      avail = avail.map(p => {
+        const match = calculateMatch(p, clientData);
+        return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
+      });
+    }
+    avail.sort((a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0));
+    return avail;
+  };
 
   const loadData = async () => {
     const clientId = localStorage.getItem('latitud_client_id');
@@ -49,9 +72,7 @@ export default function Discover() {
         setLeadScore(clientData.lead_score || 0);
       } catch (e) { /* ignore */ }
     }
-
-    // Load max 20 properties initially (progressive loading)
-    const allProps = await base44.entities.Property.list('-created_date', 50);
+    clientRef.current = clientData;
 
     // Get already reacted properties
     let reactedIds = [];
@@ -59,30 +80,58 @@ export default function Discover() {
       const reactions = await base44.entities.Reaction.filter({ client_id: clientId });
       reactedIds = reactions.map(r => r.property_id);
     }
+    reactedIdsRef.current = new Set(reactedIds);
 
-    // Filter: only commission-visible, available, non-duplicate homes
-    let available = allProps.filter(isCommissionVisible);
-    available = available.filter(p => !reactedIds.includes(p.id));
-    // Hide duplicate copies - only masters visible
-    available = available.filter(p => p.is_duplicate !== true);
+    // First batch of 50; more batches load progressively as the user swipes.
+    const first = await base44.entities.Property.list('-created_date', 50);
+    first.forEach(p => fetchedIdsRef.current.add(p.id));
+    exhaustedRef.current = first.length < 50;
+    countDuplicates(first);
 
-    // Log duplicate stats for admin visibility
-    const dupStats = countDuplicates(allProps);
-
-    // Enrich with match score
-    if (clientData) {
-      available = available.map(p => {
-        const match = calculateMatch(p, clientData);
-        return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
-      });
-    }
-
-    // Sort by match if available, else by most recent
-    available.sort((a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0));
-
-    setProperties(available);
+    const deck = enrichAndSort(first, clientData);
+    setProperties(deck);
     setLoading(false);
   };
+
+  const loadMore = async () => {
+    if (loadingMoreRef.current || exhaustedRef.current) return;
+    if (fetchedIdsRef.current.size === 0) { setLoadEpoch(e => e + 1); return; }
+    loadingMoreRef.current = true;
+    try {
+      // Paginate by excluding already-fetched ids (created_date $lt is not
+      // supported by the SDK on the built-in date-time field).
+      const more = await base44.entities.Property.filter(
+        { id: { $nin: Array.from(fetchedIdsRef.current) } },
+        '-created_date',
+        50
+      );
+      if (more.length === 0) {
+        exhaustedRef.current = true;
+      } else {
+        more.forEach(p => fetchedIdsRef.current.add(p.id));
+        if (more.length < 50) exhaustedRef.current = true;
+        const newDeck = enrichAndSort(more, clientRef.current);
+        if (newDeck.length > 0) {
+          emptyStreakRef.current = 0;
+          setProperties(prev => [...prev, ...newDeck]);
+        } else {
+          emptyStreakRef.current += 1;
+          if (emptyStreakRef.current >= 10) exhaustedRef.current = true;
+        }
+      }
+    } catch (e) { /* ignore transient */ }
+    loadingMoreRef.current = false;
+    setLoadEpoch(e => e + 1);
+  };
+
+  // Auto-load next batch when fewer than 10 cards remain in the deck.
+  useEffect(() => {
+    if (loading) return;
+    const remaining = properties.length - currentIndex;
+    if (remaining < 10 && !exhaustedRef.current && !loadingMoreRef.current) {
+      loadMore();
+    }
+  }, [currentIndex, properties.length, loading, loadEpoch]);
 
   const currentProperty = properties[currentIndex];
 
@@ -139,6 +188,7 @@ export default function Discover() {
       property_type: currentProperty.property_type,
       ...extra
     });
+    reactedIdsRef.current.add(currentProperty.id);
 
     // Update client counts + lead score
     const updates = { last_activity_date: new Date().toISOString() };

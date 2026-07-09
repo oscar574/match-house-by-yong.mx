@@ -38,15 +38,7 @@
       ]
     },
     "property_type": {
-      "type": "string",
-      "enum": [
-        "Casa",
-        "Departamento",
-        "Terreno",
-        "Penthouse",
-        "Villa",
-        "Local Comercial"
-      ]
+      "type": "string"
     },
     "status": {
       "type": "string",
