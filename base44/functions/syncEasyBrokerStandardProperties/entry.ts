@@ -211,6 +211,8 @@ Deno.serve(async (req) => {
     let photos = 0, constr = 0, dup = 0, errors = 0;
     // Detailed preview counters
     let totalDetected = 0, houses = 0, sales = 0, withPrice = 0, withPhotos = 0, withConstruction = 0, wouldPass = 0;
+    let reasonCounts = {};
+    const bumpReason = r => { if (r) reasonCounts[r] = (reasonCounts[r] || 0) + 1; };
     const processed = [];
     const MAX_PAGES = 20;
 
@@ -252,18 +254,21 @@ Deno.serve(async (req) => {
             const m = mapMinimal(item, 'not_house');
             if (!preview) await upsertProperty(base44, m);
             hidden++;
+            bumpReason('not_house');
             continue;
           }
           if (!sale) {
             const m = mapMinimal(item, 'not_sale');
             if (!preview) await upsertProperty(base44, m);
             hidden++;
+            bumpReason('not_sale');
             continue;
           }
           if (!sale.amount) {
             const m = mapMinimal(item, 'missing_price');
             if (!preview) await upsertProperty(base44, m);
             hidden++;
+            bumpReason('missing_price');
             continue;
           }
 
@@ -302,6 +307,7 @@ Deno.serve(async (req) => {
           if (vis.visible) visible++;
           else {
             hidden++;
+            bumpReason(vis.reason);
             if (vis.reason === 'missing_photos') photos++;
             else if (vis.reason === 'missing_construction_m2') constr++;
           }
@@ -389,7 +395,8 @@ Deno.serve(async (req) => {
       with_construction_m2: withConstruction,
       would_pass_filters: wouldPass,
       visible_count: visible,
-      hidden_count: hidden
+      hidden_count: hidden,
+      hidden_reasons_summary: reasonCounts
     } : null;
 
     return Response.json({ status: 'ok', preview: preview, summary: summary, preview_detail: previewDetail });

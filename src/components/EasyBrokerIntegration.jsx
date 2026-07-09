@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Plug, CheckCircle2, Clock, Wifi, WifiOff, Eye, RefreshCw, FileText, EyeOff, BadgeCheck, AlertTriangle, Info, Building2, Lock } from 'lucide-react';
+import { Plug, CheckCircle2, Clock, Wifi, WifiOff, Eye, RefreshCw, FileText, EyeOff, BadgeCheck, AlertTriangle, Info, Building2, Lock, ArrowRightCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
-import { EB_MODES, getEasyBrokerMode, setEasyBrokerMode, modeWarning } from '@/lib/commissionRules';
+import { EB_MODES, getEasyBrokerMode, setEasyBrokerMode, modeWarning, HIDDEN_REASON_LABELS } from '@/lib/commissionRules';
 
-export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, onNavigateStandard, onSynced }) {
+export default function EasyBrokerIntegration({ syncSummary, standardStats, onNavigateReview, onNavigateStandard, onSynced }) {
   const [mode, setMode] = useState(getEasyBrokerMode());
   const [testing, setTesting] = useState(null);
   const [connStatus, setConnStatus] = useState(null);
@@ -18,7 +18,13 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
   const apiKeyConfigured = connStatus?.status === 'connected';
   const standardAvailable = connStatus?.status === 'connected';
   const mlsAccess = mlsStatus?.mls_available === true;
-  const lastSync = logs && logs.length > 0 ? new Date(logs[0].started_at).toLocaleString() : (syncSummary?.lastSync || 'Never');
+  const std = standardStats || { imported: 0, visible: 0, hidden: 0 };
+  const stdVisibleOk = std.visible > 0;
+  const standardEnabled = apiKeyConfigured && standardAvailable && standardSynced && stdVisibleOk;
+  const mlsEnabled = mlsAccess;
+  const currentModeLabel = EB_MODES.find(m => m.value === mode)?.label || 'Demo';
+  const standardLog = logs && logs.find(x => x.mode === 'standard');
+  const lastStandardSync = standardLog ? new Date(standardLog.started_at).toLocaleString() : 'Never';
 
   useEffect(() => {
     runTest('connection', true);
@@ -27,8 +33,8 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
   }, []);
 
   const handleMode = (m) => {
-    if (m === 'standard' && !(apiKeyConfigured && standardAvailable && standardSynced)) return;
-    if (m === 'mls' && !mlsAccess) return;
+    if (m === 'standard' && !standardEnabled) return;
+    if (m === 'mls' && !mlsEnabled) return;
     setMode(m);
     setEasyBrokerMode(m);
   };
@@ -111,8 +117,7 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
     unexpected_response: 'Unexpected response'
   }[mlsStatus.status] : 'Checking…';
 
-  const standardEnabled = apiKeyConfigured && standardAvailable && standardSynced;
-  const mlsEnabled = mlsAccess;
+  const reasons = previewResult?.preview_detail?.hidden_reasons_summary || {};
 
   return (
     <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 border border-[#C9A45C]/20">
@@ -129,6 +134,10 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
         <span className={`text-[10px] font-semibold px-2 py-1 rounded-full ${apiKeyConfigured ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-latitud-gray'}`}>
           {apiKeyConfigured ? 'Connected' : 'Not connected'}
         </span>
+      </div>
+
+      <div className="rounded-xl bg-latitud-light p-2.5 mb-3 text-[11px] text-latitud-gray leading-relaxed">
+        Standard API syncs the connected account’s own inventory. MLS API Plan is required to sync collaborator shared-commission listings.
       </div>
 
       {/* Bilingual status banner */}
@@ -167,9 +176,9 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
           <Info size={12} className="text-[#C9A45C] mt-0.5 shrink-0" />
           <p>{modeWarning(mode)}</p>
         </div>
-        {!standardEnabled && apiKeyConfigured && (
-          <p className="mt-1.5 text-[11px] text-latitud-gray flex items-center gap-1">
-            <Lock size={10} /> Standard mode unlocks after a successful standard sync.
+        {standardSynced && !stdVisibleOk && (
+          <p className="mt-1.5 text-[11px] text-[#B42318] flex items-start gap-1 bg-red-50 rounded-lg p-2">
+            <AlertTriangle size={11} className="mt-0.5 shrink-0" /> Standard sync completed, but no properties passed visibility filters. Review missing photos, construction m², status or property type before switching Data Source.
           </p>
         )}
       </div>
@@ -180,7 +189,18 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
         <Row label="API connection" value={connLabel} ok={apiKeyConfigured} />
         <Row label="Standard inventory" value={standardAvailable ? 'Available' : (connStatus ? 'Not available' : 'Checking…')} ok={standardAvailable} />
         <Row label="MLS access" value={mlsLabel} ok={mlsAccess} />
-        <Row label="Last sync" value={lastSync} />
+        <Row label="Current data source" value={currentModeLabel} />
+        <Row label="Last standard sync" value={lastStandardSync} />
+      </div>
+
+      {/* Standard inventory stats */}
+      <div className="rounded-xl border border-gray-100 p-3 mb-3">
+        <p className="text-[11px] font-semibold text-latitud-gray uppercase tracking-wider mb-2">Standard inventory</p>
+        <div className="grid grid-cols-3 gap-2 text-center">
+          <Mini label="Imported" value={std.imported} />
+          <Mini label="Visible" value={std.visible} accent />
+          <Mini label="Hidden" value={std.hidden} />
+        </div>
       </div>
 
       {/* Commercial filters */}
@@ -199,14 +219,33 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
       </div>
 
       {/* Buttons */}
-      <div className="grid grid-cols-2 gap-2 mb-3">
+      <div className="grid grid-cols-2 gap-2 mb-2">
         <ActionBtn icon={Wifi} label="Test Connection" loading={testing === 'connection'} onClick={() => runTest('connection')} />
         <ActionBtn icon={Building2} label="Test Standard Inventory" loading={testing === 'connection'} onClick={() => runTest('connection')} />
         <ActionBtn icon={Eye} label="Sync Standard Preview" loading={syncing} disabled={!standardAvailable} onClick={runSyncPreview} />
         <ActionBtn icon={RefreshCw} label="Sync Standard Now" primary loading={syncing} disabled={!standardAvailable} onClick={runSyncNow} />
-        <ActionBtn icon={FileText} label="Sync Logs" onClick={() => setShowLogs(s => !s)} />
-        <ActionBtn icon={Eye} label="View Standard Imported" disabled={!standardSynced} onClick={() => onNavigateStandard && onNavigateStandard()} />
-        <ActionBtn icon={EyeOff} label="View Hidden Properties" onClick={() => onNavigateStandard && onNavigateStandard()} />
+      </div>
+      <button
+        onClick={() => handleMode('standard')}
+        disabled={mode === 'standard' || !standardEnabled}
+        className={`w-full flex items-center justify-center gap-1.5 px-2 py-2.5 rounded-xl text-xs font-semibold mb-3 transition-colors ${
+          mode === 'standard' ? 'bg-green-50 text-green-700 border border-green-100' :
+          standardEnabled ? 'bg-latitud-black text-white' : 'bg-gray-100 text-latitud-gray/50 cursor-not-allowed'
+        }`}
+      >
+        <ArrowRightCircle size={14} />
+        {mode === 'standard' ? 'EasyBroker Standard is active' : 'Switch Data Source to EasyBroker Standard'}
+      </button>
+      {!standardEnabled && standardSynced && (
+        <p className="text-[11px] text-latitud-gray mb-3 flex items-center gap-1">
+          <Lock size={11} /> Switch unlocks after a successful sync with at least 1 visible property.
+        </p>
+      )}
+
+      <div className="grid grid-cols-2 gap-2 mb-3">
+        <ActionBtn icon={Eye} label="View Standard Imported" disabled={std.imported === 0} onClick={() => onNavigateStandard && onNavigateStandard()} />
+        <ActionBtn icon={EyeOff} label="View Hidden Standard" disabled={std.hidden === 0} onClick={() => onNavigateStandard && onNavigateStandard()} />
+        <ActionBtn icon={FileText} label="View Sync Logs" onClick={() => setShowLogs(s => !s)} />
         <ActionBtn icon={BadgeCheck} label="Commission Review (MLS)" disabled={!mlsAccess} onClick={() => onNavigateReview && onNavigateReview()} />
         <ActionBtn icon={Wifi} label="Test MLS Access" loading={testing === 'mls'} onClick={() => runTest('mls')} />
         <ActionBtn icon={RefreshCw} label="Sync MLS Now" disabled primary muted onClick={() => {}} />
@@ -236,17 +275,30 @@ export default function EasyBrokerIntegration({ syncSummary, onNavigateReview, o
             <Eye size={12} className="text-latitud-orange" /> Standard Sync Preview (no changes applied)
           </p>
           {previewResult.status === 'ok' && previewResult.preview_detail ? (
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              <Sum label="Total detected" value={previewResult.preview_detail.total_detected} />
-              <Sum label="Houses" value={previewResult.preview_detail.houses} />
-              <Sum label="Sales" value={previewResult.preview_detail.sales} />
-              <Sum label="With price" value={previewResult.preview_detail.with_price} />
-              <Sum label="With photos" value={previewResult.preview_detail.with_photos} />
-              <Sum label="With construction m²" value={previewResult.preview_detail.with_construction_m2} />
-              <Sum label="Would pass filters" value={previewResult.preview_detail.would_pass_filters} accent />
-              <Sum label="Visible to buyer" value={previewResult.preview_detail.visible_count} accent />
-              <Sum label="Hidden" value={previewResult.preview_detail.hidden_count} />
-            </div>
+            <>
+              <div className="grid grid-cols-2 gap-2 text-xs">
+                <Sum label="Total detected" value={previewResult.preview_detail.total_detected} />
+                <Sum label="Houses detected" value={previewResult.preview_detail.houses} />
+                <Sum label="Sale properties" value={previewResult.preview_detail.sales} />
+                <Sum label="With price" value={previewResult.preview_detail.with_price} />
+                <Sum label="With photos" value={previewResult.preview_detail.with_photos} />
+                <Sum label="With construction m²" value={previewResult.preview_detail.with_construction_m2} />
+                <Sum label="Would be visible" value={previewResult.preview_detail.visible_count} accent />
+                <Sum label="Would be hidden" value={previewResult.preview_detail.hidden_count} />
+              </div>
+              {Object.keys(reasons).length > 0 && (
+                <div className="mt-2 pt-2 border-t border-blue-100">
+                  <p className="text-[10px] font-semibold text-latitud-gray uppercase tracking-wider mb-1">Hidden reasons summary</p>
+                  <div className="flex flex-wrap gap-1.5">
+                    {Object.entries(reasons).map(([r, c]) => (
+                      <span key={r} className="text-[10px] px-2 py-0.5 rounded-full bg-white text-latitud-gray border border-gray-100">
+                        {HIDDEN_REASON_LABELS[r] || r}: {c}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </>
           ) : (
             <p className="text-[11px] text-[#B42318]">{previewResult.message || previewResult.error || 'Error en preview.'}</p>
           )}
@@ -340,6 +392,15 @@ function Row({ label, value, ok }) {
         {ok !== undefined && (ok ? <CheckCircle2 size={11} /> : <Clock size={11} className="text-latitud-gray" />)}
         {value}
       </span>
+    </div>
+  );
+}
+
+function Mini({ label, value, accent }) {
+  return (
+    <div className="bg-latitud-light rounded-lg py-2">
+      <p className={`text-lg font-bold ${accent ? 'text-latitud-orange' : 'text-latitud-black'}`}>{value ?? 0}</p>
+      <p className="text-[10px] text-latitud-gray uppercase tracking-wider">{label}</p>
     </div>
   );
 }

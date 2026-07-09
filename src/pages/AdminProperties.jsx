@@ -41,6 +41,15 @@ export default function AdminProperties() {
     };
   }, [properties]);
 
+  const standardStats = React.useMemo(() => {
+    const std = properties.filter(p => p.sync_source === 'easybroker_standard' || p.own_inventory === true);
+    return {
+      imported: std.length,
+      visible: std.filter(p => p.is_visible_to_buyer !== false).length,
+      hidden: std.filter(p => p.is_visible_to_buyer === false).length
+    };
+  }, [properties]);
+
   const loadProperties = async () => {
     const p = await base44.entities.Property.list('-created_date', 50);
     setProperties(p);
@@ -206,7 +215,7 @@ export default function AdminProperties() {
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
 
-      <EasyBrokerIntegration syncSummary={syncSummary} onNavigateReview={() => setViewMode('review')} onNavigateStandard={() => setViewMode('standard')} onSynced={loadProperties} />
+      <EasyBrokerIntegration syncSummary={syncSummary} standardStats={standardStats} onNavigateReview={() => setViewMode('review')} onNavigateStandard={() => setViewMode('standard')} onSynced={loadProperties} />
 
       <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
         <button onClick={() => setViewMode('inventory')} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'inventory' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>Inventario</button>
