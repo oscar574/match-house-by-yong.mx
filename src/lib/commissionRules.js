@@ -39,7 +39,7 @@ export const HIDDEN_REASON_LABELS = {
 
 // Statuses that count as "confirmed" and therefore visible to the buyer.
 // Kept bilingual for backward compatibility with existing demo data ("Confirmada").
-const CONFIRMED_STATUSES = ['Confirmada', 'confirmed', 'manually_confirmed'];
+const CONFIRMED_STATUSES = ['Confirmada', 'confirmed', 'manually_confirmed', 'own_inventory'];
 
 export function isCommissionConfirmed(p) {
   return !!p && CONFIRMED_STATUSES.includes(p.commission_status);
@@ -77,12 +77,17 @@ export function evaluateBuyerVisibility(p) {
   if (!hasConstructionM2(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_CONSTRUCTION_M2 };
   if (!hasPhotos(p)) return { visible: false, reason: HIDDEN_REASONS.MISSING_PHOTOS };
 
-  // Commission gate (the core commercial rule).
-  if (p.commission_status === 'not_shared') return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
-  if (p.commission_status === 'unknown' || !p.commission_status) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
-  if (!isCommissionConfirmed(p)) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
-  if (p.collaboration_enabled !== true && p.shared_commission !== true) {
-    return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
+  // Own inventory (connected account) is commercially valid for Latitud — no
+  // shared-commission gate applies. Collaborator inventory requires confirmed
+  // shared commission (handled below).
+  const isOwn = p.own_inventory === true || p.commission_status === 'own_inventory';
+  if (!isOwn) {
+    if (p.commission_status === 'not_shared') return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
+    if (p.commission_status === 'unknown' || !p.commission_status) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
+    if (!isCommissionConfirmed(p)) return { visible: false, reason: HIDDEN_REASONS.COMMISSION_UNKNOWN };
+    if (p.collaboration_enabled !== true && p.shared_commission !== true) {
+      return { visible: false, reason: HIDDEN_REASONS.NO_SHARED_COMMISSION };
+    }
   }
 
   // Manual hide flags.
@@ -116,7 +121,7 @@ export const EB_MODES = [
 ];
 
 export function getEasyBrokerMode() {
-  return localStorage.getItem(MODE_KEY) || 'mls';
+  return localStorage.getItem(MODE_KEY) || 'demo';
 }
 
 export function setEasyBrokerMode(mode) {
@@ -125,6 +130,7 @@ export function setEasyBrokerMode(mode) {
 
 export function modeWarning(mode) {
   if (mode === 'demo') return 'Demo data is active. Connect EasyBroker MLS API to show real shared-commission inventory.';
-  if (mode === 'standard') return 'Standard API only shows the connected account\u2019s own inventory. Use MLS mode to show shared commission listings from collaborators.';
-  return 'MLS mode is active. Buyers only see shared-commission properties that pass commercial filters.';
+  if (mode === 'standard') return 'EasyBroker Standard API is connected. You can sync the connected account\u2019s own inventory. MLS API Plan is required to sync collaborator shared-commission listings. — La API estándar de EasyBroker está conectada. Puedes sincronizar el inventario propio de la cuenta. Para sincronizar propiedades de colaboradores con comisión compartida se requiere MLS API Plan.';
+  if (mode === 'mls') return 'MLS mode is active. Buyers only see shared-commission properties that pass commercial filters.';
+  return 'Demo data is active. Connect EasyBroker Standard API to sync the connected account\u2019s own inventory.';
 }

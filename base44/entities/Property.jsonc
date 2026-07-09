@@ -170,6 +170,10 @@
     "broker_origin": {
       "type": "string"
     },
+    "own_inventory": {
+      "type": "boolean",
+      "default": false
+    },
     "collaboration_enabled": {
       "type": "boolean",
       "default": false
@@ -192,7 +196,8 @@
         "unknown",
         "not_shared",
         "pending_review",
-        "manually_confirmed"
+        "manually_confirmed",
+        "own_inventory"
       ],
       "default": "No confirmada"
     },
@@ -319,7 +324,8 @@
         "manual",
         "demo",
         "easybroker",
-        "easybroker_mls"
+        "easybroker_mls",
+        "easybroker_standard"
       ],
       "default": "manual"
     },

@@ -9,6 +9,7 @@ import { computeDuplicateFlags, countDuplicates, groupDuplicates } from '@/lib/d
 import { evaluateBuyerVisibility } from '@/lib/commissionRules';
 import EasyBrokerIntegration from '@/components/EasyBrokerIntegration';
 import EasyBrokerReview from '@/components/EasyBrokerReview';
+import EasyBrokerStandardReview from '@/components/EasyBrokerStandardReview';
 
 export default function AdminProperties() {
   const { toast } = useToast();
@@ -205,15 +206,23 @@ export default function AdminProperties() {
       </div>
       <p className="text-sm text-latitud-gray mb-3">{properties.length} propiedades · {filtered.length} en filtro</p>
 
-      <EasyBrokerIntegration syncSummary={syncSummary} onNavigateReview={() => setViewMode('review')} onSynced={loadProperties} />
+      <EasyBrokerIntegration syncSummary={syncSummary} onNavigateReview={() => setViewMode('review')} onNavigateStandard={() => setViewMode('standard')} onSynced={loadProperties} />
 
-      <div className="flex gap-2 mb-4">
-        <button onClick={() => setViewMode('inventory')} className={`px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'inventory' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>Inventario</button>
-        <button onClick={() => setViewMode('review')} className={`px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'review' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>EasyBroker MLS Review</button>
+      <div className="flex gap-2 mb-4 overflow-x-auto no-scrollbar">
+        <button onClick={() => setViewMode('inventory')} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'inventory' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>Inventario</button>
+        <button onClick={() => setViewMode('standard')} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'standard' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>EasyBroker Standard Review</button>
+        <button onClick={() => setViewMode('review')} className={`whitespace-nowrap px-4 py-2 rounded-xl text-xs font-semibold ${viewMode === 'review' ? 'bg-latitud-black text-white' : 'bg-white text-latitud-gray border border-gray-100'}`}>EasyBroker MLS Review</button>
       </div>
 
       {viewMode === 'review' ? (
         <EasyBrokerReview
+          properties={properties}
+          onUpdate={updateProperty}
+          onSetMaster={setAsMaster}
+          onSeparate={separateFromGroup}
+        />
+      ) : viewMode === 'standard' ? (
+        <EasyBrokerStandardReview
           properties={properties}
           onUpdate={updateProperty}
           onSetMaster={setAsMaster}
