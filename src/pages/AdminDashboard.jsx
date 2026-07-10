@@ -220,7 +220,7 @@ export default function AdminDashboard() {
       {/* Ticket promedio */}
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
         <p className="text-xs text-latitud-gray uppercase tracking-wider mb-1">Ticket Promedio Buscado</p>
-        <p className="text-2xl font-bold text-latitud-orange">${data.avgBudget.toFixed(1)}M MXN</p>
+        <p className="text-2xl font-bold text-latitud-orange">{formatPrice(data.avgBudget * 1000000)}</p>
       </div>
 
       {/* Top liked */}

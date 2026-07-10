@@ -101,11 +101,7 @@ export function calculateMatch(property, clientPreferences) {
 
 export function formatPrice(price, currency = 'MXN') {
   if (!price) return '';
-  if (price >= 1000000) {
-    const millions = price / 1000000;
-    return `$${millions % 1 === 0 ? millions : millions.toFixed(1)}M ${currency}`;
-  }
-  return `$${price.toLocaleString()} ${currency}`;
+  return `$${Number(price).toLocaleString('es-MX')} ${currency}`;
 }
 
 // Exact price with full thousands separators (for cards and detail)

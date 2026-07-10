@@ -5,6 +5,7 @@ import { ArrowLeft, Search, Check, Bell, ArrowRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
 import { countAvailable, availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
+import { formatThousands, parseThousands } from '@/lib/priceFormat';
 
 const OPERATIONS = [
   { value: 'Comprar', label: 'Comprar', desc: 'Encuentra tu próxima casa' },
@@ -12,10 +13,10 @@ const OPERATIONS = [
   { value: 'Explorar', label: 'Solo explorar', desc: 'Ver opciones sin compromiso' }
 ];
 const QUICK_BUDGETS = [
-  { label: 'Hasta $3M', min: 0, max: 3000000 },
-  { label: '$3M - $5M', min: 3000000, max: 5000000 },
-  { label: '$5M - $10M', min: 5000000, max: 10000000 },
-  { label: '$10M - $20M', min: 10000000, max: 20000000 }
+  { label: 'Hasta $3,000,000', min: 0, max: 3000000 },
+  { label: '$3,000,000 - $5,000,000', min: 3000000, max: 5000000 },
+  { label: '$5,000,000 - $10,000,000', min: 5000000, max: 10000000 },
+  { label: '$10,000,000 - $20,000,000', min: 10000000, max: 20000000 }
 ];
 const BEDROOMS_MIN = [0, 1, 2, 3, 4];
 const BEDROOMS_MAX = [0, 2, 3, 4, 5];
@@ -124,7 +125,7 @@ export default function Onboarding() {
         <div className="flex items-center gap-2 bg-[#E6D3A3]/15 border border-[#C9A45C]/20 rounded-xl px-3 py-2">
           <Check size={14} className="text-[#C9A45C] shrink-0" />
           <p className="text-xs text-latitud-black font-medium">
-            {loadingCount ? 'Calculando propiedades disponibles…' : `${availableCount} propiedades disponibles con tus filtros`}
+            {loadingCount ? 'Calculando propiedades disponibles…' : `${availableCount.toLocaleString('es-MX')} propiedades disponibles con tus filtros`}
           </p>
         </div>
       </div>
@@ -180,12 +181,12 @@ export default function Onboarding() {
               <div className="grid grid-cols-2 gap-3 mb-5">
                 <div>
                   <label className="text-xs text-latitud-gray mb-1.5 block">Mínimo (MXN)</label>
-                  <input type="number" value={priceMin || ''} onChange={e => setPriceMin(Number(e.target.value) || 0)} placeholder="0"
+                  <input type="text" inputMode="numeric" value={priceMin ? formatThousands(priceMin) : ''} onChange={e => setPriceMin(parseThousands(e.target.value))} placeholder="0"
                     className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
                 </div>
                 <div>
                   <label className="text-xs text-latitud-gray mb-1.5 block">Máximo (MXN)</label>
-                  <input type="number" value={priceMax || ''} onChange={e => setPriceMax(Number(e.target.value) || 0)} placeholder="Sin límite"
+                  <input type="text" inputMode="numeric" value={priceMax ? formatThousands(priceMax) : ''} onChange={e => setPriceMax(parseThousands(e.target.value))} placeholder="Sin límite"
                     className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
                 </div>
               </div>

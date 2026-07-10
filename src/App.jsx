@@ -4,6 +4,7 @@ import { queryClientInstance } from '@/lib/query-client'
 import { BrowserRouter as Router, Route, Routes, Navigate } from 'react-router-dom';
 import PageNotFound from './lib/PageNotFound';
 import { AuthProvider } from '@/lib/AuthContext';
+import { BrandProvider } from '@/lib/BrandSettingsContext';
 import ProtectedRoute from '@/components/ProtectedRoute';
 import ScrollToTop from './components/ScrollToTop';
 
@@ -38,6 +39,7 @@ function App() {
   return (
     <AuthProvider>
       <QueryClientProvider client={queryClientInstance}>
+        <BrandProvider>
         <Router>
           <ScrollToTop />
           <Routes>
@@ -74,6 +76,7 @@ function App() {
             <Route path="*" element={<PageNotFound />} />
           </Routes>
         </Router>
+        </BrandProvider>
         <Toaster />
       </QueryClientProvider>
     </AuthProvider>

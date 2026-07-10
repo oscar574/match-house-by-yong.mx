@@ -1,7 +1,9 @@
 import React from 'react';
 import { brandConfig } from '@/lib/brandConfig';
+import { useBrand } from '@/lib/BrandSettingsContext';
 
 export default function LatitudLogo({ variant = 'dark', size = 'md' }) {
+  const brand = useBrand();
   const sizeClasses = {
     sm: 'h-7',
     md: 'h-9',
@@ -14,6 +16,18 @@ export default function LatitudLogo({ variant = 'dark', size = 'md' }) {
   const markBg = variant === 'white' ? '#FFFFFF' : '#061A40';
   const markStroke = variant === 'white' ? '#061A40' : '#FFFFFF';
   const markAccent = '#0057FF';
+
+  // White-label logo image always wins. The default "M" mark only shows when
+  // no logo is configured in BrandSettings.
+  if (brand.logo_url) {
+    return (
+      <img
+        src={brand.logo_url}
+        alt={brand.brand_name || brandConfig.brand_name}
+        className={`${sizeClasses[size]} w-auto object-contain`}
+      />
+    );
+  }
 
   return (
     <div className="flex items-center gap-2 select-none">
@@ -30,10 +44,10 @@ export default function LatitudLogo({ variant = 'dark', size = 'md' }) {
       </svg>
       <div className="flex flex-col leading-none">
         <span className={`font-extrabold text-sm tracking-tight ${titleColor}`}>
-          {brandConfig.brand_name}
+          {brand.brand_name || brandConfig.brand_name}
         </span>
         <span className={`text-[9px] tracking-[0.18em] ${subColor}`}>
-          {brandConfig.brand_subtitle}
+          {brand.brand_subtitle || brandConfig.brand_subtitle}
         </span>
       </div>
     </div>

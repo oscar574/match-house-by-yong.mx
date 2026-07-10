@@ -1,0 +1,36 @@
+{
+  "name": "BrandSettings",
+  "type": "object",
+  "properties": {
+    "brand_name": {
+      "type": "string"
+    },
+    "brand_subtitle": {
+      "type": "string"
+    },
+    "logo_url": {
+      "type": "string"
+    },
+    "primary_color": {
+      "type": "string"
+    },
+    "secondary_color": {
+      "type": "string"
+    },
+    "accent_color": {
+      "type": "string"
+    },
+    "whatsapp_number": {
+      "type": "string"
+    },
+    "contact_email": {
+      "type": "string"
+    },
+    "tagline_principal": {
+      "type": "string"
+    },
+    "tagline_secundaria": {
+      "type": "string"
+    }
+  }
+}

@@ -3,6 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { X, Search } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
+import { formatThousands, parseThousands } from '@/lib/priceFormat';
 
 const OPERATIONS = [
   { value: 'Comprar', label: 'Comprar' },
@@ -15,8 +16,8 @@ const BEDROOMS_MAX = [0, 2, 3, 4, 5];
 export default function SearchPreferencesModal({ open, onClose, client, onSaved }) {
   const [operation, setOperation] = useState('Explorar');
   const [zones, setZones] = useState([]);
-  const [priceMin, setPriceMin] = useState('');
-  const [priceMax, setPriceMax] = useState('');
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(0);
   const [bedroomsMin, setBedroomsMin] = useState(0);
   const [bedroomsMax, setBedroomsMax] = useState(0);
   const [availableZones, setAvailableZones] = useState([]);
@@ -27,8 +28,8 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
     if (!open) return;
     setOperation(client?.operation_preference || 'Explorar');
     setZones(client?.favorite_zones || []);
-    setPriceMin(client?.budget_min_estimated > 0 ? String(client.budget_min_estimated) : '');
-    setPriceMax(client?.budget_max_estimated > 0 ? String(client.budget_max_estimated) : '');
+    setPriceMin(client?.budget_min_estimated > 0 ? client.budget_min_estimated : 0);
+    setPriceMax(client?.budget_max_estimated > 0 ? client.budget_max_estimated : 0);
     setBedroomsMin(client?.preferred_bedrooms > 0 ? client.preferred_bedrooms : 0);
     setBedroomsMax(client?.preferred_bedrooms_max > 0 ? client.preferred_bedrooms_max : 0);
     setZoneQuery('');
@@ -47,8 +48,8 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
     if (!client?.id) return;
     setSaving(true);
     try {
-      const min = Number(priceMin) || 0;
-      const max = Number(priceMax) || 0;
+      const min = priceMin || 0;
+      const max = priceMax || 0;
       await base44.entities.Client.update(client.id, {
         operation_preference: operation,
         favorite_zones: zones,
@@ -120,12 +121,12 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
                 <div className="grid grid-cols-2 gap-3">
                   <div>
                     <label className="text-[10px] text-latitud-gray block mb-1">Mínimo</label>
-                    <input type="number" value={priceMin} onChange={e => setPriceMin(e.target.value)} placeholder="0"
+                    <input type="text" inputMode="numeric" value={priceMin ? formatThousands(priceMin) : ''} onChange={e => setPriceMin(parseThousands(e.target.value))} placeholder="0"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-100 text-sm focus:border-[#C9A45C] focus:outline-none" />
                   </div>
                   <div>
                     <label className="text-[10px] text-latitud-gray block mb-1">Máximo</label>
-                    <input type="number" value={priceMax} onChange={e => setPriceMax(e.target.value)} placeholder="Sin límite"
+                    <input type="text" inputMode="numeric" value={priceMax ? formatThousands(priceMax) : ''} onChange={e => setPriceMax(parseThousands(e.target.value))} placeholder="Sin límite"
                       className="w-full px-3 py-2.5 rounded-xl border border-gray-100 text-sm focus:border-[#C9A45C] focus:outline-none" />
                   </div>
                 </div>

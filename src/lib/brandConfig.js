@@ -52,9 +52,17 @@ export const brandConfig = {
   }
 };
 
-// Effective WhatsApp number: white-label override (Admin > White Label) wins,
-// falling back to the default in brandConfig. Non-hardcoded and editable.
+// Active white-label settings (loaded from the BrandSettings entity by BrandProvider).
+// Takes precedence over the static defaults below.
+let _activeBrand = null;
+export function setActiveBrand(settings) { _activeBrand = settings || null; }
+export function getActiveBrand() { return _activeBrand; }
+
+// Effective WhatsApp number: active BrandSettings wins, then any legacy
+// localStorage override, then the default in brandConfig.
 export function getWhatsAppNumber() {
+  const fromActive = _activeBrand?.whatsapp_number;
+  if (fromActive) return String(fromActive).replace(/\D/g, '');
   try {
     const overrides = JSON.parse(localStorage.getItem('matchhouse_brand_overrides') || '{}');
     const fromOverride = (overrides.whatsapp_number || overrides.contact_whatsapp || '').toString().replace(/\D/g, '');
