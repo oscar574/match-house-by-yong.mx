@@ -1,166 +1,115 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ArrowLeft, Check, ShieldCheck, RefreshCw, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Search, Check, Bell, ArrowRight } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
-import { brandConfig } from '@/lib/brandConfig';
+import { countAvailable, availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
 
-const LOOKING_FOR = ['Casa familiar', 'Inversión', 'Lujo', 'Playa', 'Norte de Mérida', 'Country Club lifestyle'];
-const BUDGETS = ['Menos de $3M', '$3M a $5M', '$5M a $10M', '$10M a $20M', 'Más de $20M'];
-const ZONES = ['Yucatán Country Club', 'Norte de Mérida', 'Centro de Mérida', 'Telchac', 'Progreso', 'Chelem', 'Ciudad de México', 'Santa Fe', 'Interlomas', 'Valle de Bravo'];
-const ROOMS = ['1', '2', '3', '4 o más', 'No importa'];
-const YESNO = ['Sí', 'No', 'Indiferente'];
-
-const budgetMap = {
-  'Menos de $3M': [0, 3000000],
-  '$3M a $5M': [3000000, 5000000],
-  '$5M a $10M': [5000000, 10000000],
-  '$10M a $20M': [10000000, 20000000],
-  'Más de $20M': [20000000, 100000000]
-};
-
-const investmentMap = {
-  'Casa familiar': 'Familiar',
-  'Inversión': 'Inversión',
-  'Lujo': 'Lujo',
-  'Playa': 'Playa',
-  'Norte de Mérida': 'Norte',
-  'Country Club lifestyle': 'Country Club'
-};
-
-function Chip({ label, active, onClick }) {
-  return (
-    <motion.button
-      whileTap={{ scale: 0.98 }}
-      onClick={onClick}
-      className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all text-sm font-medium flex items-center justify-between ${
-        active ? 'border-[#C9A45C] bg-[#E6D3A3]/15 text-latitud-black' : 'border-gray-100 bg-white text-latitud-gray hover:border-gray-200'
-      }`}
-    >
-      <span>{label}</span>
-      {active && (
-        <div className="w-5 h-5 rounded-full bg-[#C9A45C] flex items-center justify-center">
-          <Check size={12} className="text-latitud-black" />
-        </div>
-      )}
-    </motion.button>
-  );
-}
-
-function MiniChip({ label, active, onClick }) {
-  return (
-    <button
-      onClick={onClick}
-      className={`px-4 py-2 rounded-full text-xs font-medium border transition-all ${
-        active ? 'border-[#C9A45C] bg-[#E6D3A3]/20 text-latitud-black' : 'border-gray-100 text-latitud-gray'
-      }`}
-    >
-      {label}
-    </button>
-  );
-}
-
-function Section({ title, children }) {
-  return (
-    <div className="mb-5">
-      <p className="text-xs font-semibold text-latitud-gray uppercase tracking-wider mb-2.5">{title}</p>
-      {children}
-    </div>
-  );
-}
+const OPERATIONS = [
+  { value: 'Comprar', label: 'Comprar', desc: 'Encuentra tu próxima casa' },
+  { value: 'Rentar', label: 'Rentar', desc: 'Renta por una temporada' },
+  { value: 'Explorar', label: 'Solo explorar', desc: 'Ver opciones sin compromiso' }
+];
+const QUICK_BUDGETS = [
+  { label: 'Hasta $3M', min: 0, max: 3000000 },
+  { label: '$3M - $5M', min: 3000000, max: 5000000 },
+  { label: '$5M - $10M', min: 5000000, max: 10000000 },
+  { label: '$10M - $20M', min: 10000000, max: 20000000 }
+];
+const BEDROOMS_MIN = [0, 1, 2, 3, 4];
+const BEDROOMS_MAX = [0, 2, 3, 4, 5];
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
-  const [lookingFor, setLookingFor] = useState('');
-  const [budget, setBudget] = useState('');
-  const [zones, setZones] = useState([]);
-  const [bedrooms, setBedrooms] = useState('');
-  const [bathrooms, setBathrooms] = useState('');
-  const [pool, setPool] = useState('');
-  const [garden, setGarden] = useState('');
-  const [contact, setContact] = useState({ name: '', whatsapp: '', email: '' });
-  const [otp, setOtp] = useState('');
-  const [otpError, setOtpError] = useState('');
-  const [saving, setSaving] = useState(false);
-
   const totalSteps = 5;
+  const [operation, setOperation] = useState('');
+  const [zones, setZones] = useState([]);
+  const [zoneQuery, setZoneQuery] = useState('');
+  const [priceMin, setPriceMin] = useState(0);
+  const [priceMax, setPriceMax] = useState(0);
+  const [bedroomsMin, setBedroomsMin] = useState(0);
+  const [bedroomsMax, setBedroomsMax] = useState(0);
+  const [notifications, setNotifications] = useState(true);
+  const [contact, setContact] = useState({ name: '', whatsapp: '', email: '' });
+  const [saving, setSaving] = useState(false);
+  const [allProps, setAllProps] = useState([]);
+  const [loadingCount, setLoadingCount] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const props = await base44.entities.Property.list('-created_date', 1000);
+        setAllProps(props);
+      } catch (e) { /* ignore */ }
+      setLoadingCount(false);
+    })();
+  }, []);
+
+  const availableZones = useMemo(() => availableZonesFromProperties(allProps), [allProps]);
+  const prefs = { operation, zones, priceMin, priceMax, bedroomsMin, bedroomsMax };
+  const availableCount = useMemo(() => countAvailable(allProps, prefs), [allProps, prefs]);
+
+  const filteredZones = availableZones.filter(z => z.toLowerCase().includes(zoneQuery.toLowerCase()));
   const progress = ((step + 1) / totalSteps) * 100;
-  const demoCode = brandConfig.demo_whatsapp_otp_code;
 
   const toggleZone = (z) => setZones(prev => prev.includes(z) ? prev.filter(x => x !== z) : [...prev, z]);
 
-  const canContinue = () => {
-    if (step === 0) return !!lookingFor;
-    if (step === 1) return !!budget;
-    if (step === 2) return zones.length > 0 && !!bedrooms && !!bathrooms && !!pool && !!garden;
-    if (step === 3) return contact.name && contact.whatsapp && (!contact.email || /^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact.email));
-    return false;
+  const canNext = () => {
+    if (step === 4) return !!(contact.name && contact.whatsapp);
+    return true;
   };
 
-  const handleFinish = async () => {
+  const next = () => setStep(s => Math.min(s + 1, totalSteps - 1));
+  const back = () => setStep(s => Math.max(s - 1, 0));
+  const skip = () => {
+    if (step === 0 && !operation) setOperation('Explorar');
+    next();
+  };
+
+  const finish = async () => {
     setSaving(true);
-    const [budgetMin, budgetMax] = budgetMap[budget] || [0, 0];
-    const bedsNum = bedrooms !== 'No importa' ? parseInt(bedrooms) : null;
-    const bathsNum = bathrooms !== 'No importa' ? parseInt(bathrooms) : null;
-    const amenities = [];
-    if (pool === 'Sí') amenities.push('alberca');
-    if (garden === 'Sí') amenities.push('jardín');
-
-    const clientData = {
-      name: contact.name,
-      whatsapp: contact.whatsapp,
-      email: contact.email || '',
-      city: 'Mérida',
-      looking_for: lookingFor,
-      property_type_wanted: 'Casa',
-      favorite_zones: zones,
-      budget_range: budget,
-      important_features: [],
-      bedrooms_wanted: bedrooms,
-      preferred_bedrooms: bedsNum,
-      preferred_bathrooms: bathsNum,
-      preferred_amenities: amenities,
-      investment_profile: investmentMap[lookingFor] || '',
-      budget_min_estimated: budgetMin,
-      budget_max_estimated: budgetMax,
-      onboarding_completed: true,
-      phone_verified: true,
-      whatsapp_verified_at: new Date().toISOString(),
-      buyer_intent_score: 10,
-      lead_score: 10,
-      lead_status: 'explorando',
-      commercial_stage: 'Onboarding completado',
-      lead_source: 'MatchHouse',
-      assigned_advisor: 'Carlos Ramírez'
-    };
-
-    const client = await base44.entities.Client.create(clientData);
-    localStorage.setItem('latitud_client_id', client.id);
-    localStorage.setItem('latitud_client_name', contact.name);
-    navigate('/discover');
+    try {
+      const clientData = {
+        name: contact.name,
+        whatsapp: contact.whatsapp,
+        email: contact.email || '',
+        city: 'Mérida',
+        operation_preference: operation || 'Explorar',
+        favorite_zones: zones,
+        budget_min_estimated: priceMin || 0,
+        budget_max_estimated: priceMax || 0,
+        budget_range: budgetLabel(priceMin, priceMax),
+        preferred_bedrooms: bedroomsMin,
+        preferred_bedrooms_max: bedroomsMax,
+        bedrooms_wanted: bedroomsMin > 0 ? `${bedroomsMin}+` : 'No importa',
+        property_type_wanted: 'Casa',
+        notifications_enabled: notifications,
+        onboarding_completed: true,
+        phone_verified: true,
+        whatsapp_verified_at: new Date().toISOString(),
+        buyer_intent_score: 10,
+        lead_score: 10,
+        lead_status: 'explorando',
+        commercial_stage: 'Onboarding completado',
+        lead_source: 'MatchHouse',
+        assigned_advisor: 'Carlos Ramírez'
+      };
+      const client = await base44.entities.Client.create(clientData);
+      localStorage.setItem('latitud_client_id', client.id);
+      localStorage.setItem('latitud_client_name', contact.name);
+      navigate('/discover');
+    } catch (e) { /* ignore */ }
+    setSaving(false);
   };
-
-  const verifyOtp = () => {
-    if (otp === demoCode) {
-      setOtpError('');
-      handleFinish();
-    } else {
-      setOtpError('Código incorrecto. En modo demo usa ' + demoCode + '.');
-    }
-  };
-
-  const next = () => setStep(s => s + 1);
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
       {/* Header */}
       <div className="px-4 pt-6 pb-2">
         <div className="flex items-center justify-between mb-4">
-          <button onClick={() => step > 0 ? setStep(s => s - 1) : navigate('/')} className="p-2 -ml-2 text-latitud-gray">
-            <ArrowLeft size={24} />
-          </button>
+          <button onClick={() => step > 0 ? back() : navigate('/')} className="p-2 -ml-2 text-latitud-gray"><ArrowLeft size={24} /></button>
           <LatitudLogo size="sm" />
           <div className="w-10" />
         </div>
@@ -170,118 +119,171 @@ export default function Onboarding() {
         <p className="text-xs text-latitud-gray mt-2">Paso {step + 1} de {totalSteps}</p>
       </div>
 
+      {/* Live counter */}
+      <div className="px-6 pt-2">
+        <div className="flex items-center gap-2 bg-[#E6D3A3]/15 border border-[#C9A45C]/20 rounded-xl px-3 py-2">
+          <Check size={14} className="text-[#C9A45C] shrink-0" />
+          <p className="text-xs text-latitud-black font-medium">
+            {loadingCount ? 'Calculando propiedades disponibles…' : `${availableCount} propiedades disponibles con tus filtros`}
+          </p>
+        </div>
+      </div>
+
       {/* Content */}
-      <div className="flex-1 px-6 pt-6 pb-8 flex flex-col">
+      <div className="flex-1 px-6 pt-5 pb-8 flex flex-col">
         <AnimatePresence mode="wait">
           {step === 0 && (
             <motion.div key="s0" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
-              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">¿Qué estás buscando?</h2>
-              <p className="text-latitud-gray text-sm mb-6">Curado para ti según tu estilo de vida.</p>
+              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">¿Qué quieres hacer?</h2>
+              <p className="text-latitud-gray text-sm mb-6">Esto enfoca tu búsqueda.</p>
               <div className="space-y-3 flex-1">
-                {LOOKING_FOR.map(o => <Chip key={o} label={o} active={lookingFor === o} onClick={() => { setLookingFor(o); setTimeout(next, 250); }} />)}
+                {OPERATIONS.map(o => (
+                  <button key={o.value} onClick={() => setOperation(o.value)}
+                    className={`w-full text-left px-4 py-3.5 rounded-xl border-2 transition-all text-sm font-medium flex items-center justify-between ${operation === o.value ? 'border-[#C9A45C] bg-[#E6D3A3]/15 text-latitud-black' : 'border-gray-100 bg-white text-latitud-gray hover:border-gray-200'}`}>
+                    <div>
+                      <span className="block">{o.label}</span>
+                      <span className="block text-xs text-latitud-gray font-normal mt-0.5">{o.desc}</span>
+                    </div>
+                    {operation === o.value && <div className="w-5 h-5 rounded-full bg-[#C9A45C] flex items-center justify-center shrink-0"><Check size={12} className="text-latitud-black" /></div>}
+                  </button>
+                ))}
               </div>
             </motion.div>
           )}
 
           {step === 1 && (
             <motion.div key="s1" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
-              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">Presupuesto</h2>
-              <p className="text-latitud-gray text-sm mb-6">Dentro de tu presupuesto, sin excederte.</p>
-              <div className="space-y-3 flex-1">
-                {BUDGETS.map(o => <Chip key={o} label={o} active={budget === o} onClick={() => { setBudget(o); setTimeout(next, 250); }} />)}
+              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">¿En qué zona buscas?</h2>
+              <p className="text-latitud-gray text-sm mb-5">Elige una o varias zonas del inventario actual.</p>
+              <div className="relative mb-4">
+                <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-latitud-gray" />
+                <input value={zoneQuery} onChange={e => setZoneQuery(e.target.value)} placeholder="Buscar zona o ciudad"
+                  className="w-full pl-9 pr-3 py-3 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-sm" />
               </div>
+              <div className="flex flex-wrap gap-2 flex-1 overflow-y-auto">
+                {filteredZones.map(z => (
+                  <button key={z} onClick={() => toggleZone(z)}
+                    className={`px-3 py-2 rounded-full text-xs font-medium border-2 ${zones.includes(z) ? 'border-[#C9A45C] bg-[#E6D3A3]/20 text-latitud-black' : 'border-gray-100 text-latitud-gray'}`}>
+                    {z}
+                  </button>
+                ))}
+                {filteredZones.length === 0 && <p className="text-sm text-latitud-gray">No se encontraron zonas.</p>}
+              </div>
+              {zones.length > 0 && <p className="text-xs text-latitud-gray mt-3">{zones.length} zona(s) seleccionada(s)</p>}
             </motion.div>
           )}
 
           {step === 2 && (
-            <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col overflow-y-auto">
-              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">Preferencias</h2>
-              <p className="text-latitud-gray text-sm mb-5">Basado en tu lifestyle.</p>
-              <Section title="Zonas que te interesan">
-                <div className="flex flex-wrap gap-2">
-                  {ZONES.map(z => <MiniChip key={z} label={z} active={zones.includes(z)} onClick={() => toggleZone(z)} />)}
+            <motion.div key="s2" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
+              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">Rango de precio</h2>
+              <p className="text-latitud-gray text-sm mb-6">Filtramos dentro de tu presupuesto.</p>
+              <div className="grid grid-cols-2 gap-3 mb-5">
+                <div>
+                  <label className="text-xs text-latitud-gray mb-1.5 block">Mínimo (MXN)</label>
+                  <input type="number" value={priceMin || ''} onChange={e => setPriceMin(Number(e.target.value) || 0)} placeholder="0"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
                 </div>
-              </Section>
-              <Section title="Recámaras">
-                <div className="flex flex-wrap gap-2">{ROOMS.map(r => <MiniChip key={r} label={r} active={bedrooms === r} onClick={() => setBedrooms(r)} />)}</div>
-              </Section>
-              <Section title="Baños">
-                <div className="flex flex-wrap gap-2">{ROOMS.map(r => <MiniChip key={'b' + r} label={r} active={bathrooms === r} onClick={() => setBathrooms(r)} />)}</div>
-              </Section>
-              <Section title="Alberca">
-                <div className="flex flex-wrap gap-2">{YESNO.map(o => <MiniChip key={'p' + o} label={o} active={pool === o} onClick={() => setPool(o)} />)}</div>
-              </Section>
-              <Section title="Jardín">
-                <div className="flex flex-wrap gap-2">{YESNO.map(o => <MiniChip key={'g' + o} label={o} active={garden === o} onClick={() => setGarden(o)} />)}</div>
-              </Section>
-              <button onClick={next} disabled={!canContinue()} className="mt-2 w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl disabled:opacity-40 transition-opacity">
-                Continuar
-              </button>
+                <div>
+                  <label className="text-xs text-latitud-gray mb-1.5 block">Máximo (MXN)</label>
+                  <input type="number" value={priceMax || ''} onChange={e => setPriceMax(Number(e.target.value) || 0)} placeholder="Sin límite"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
+                </div>
+              </div>
+              <p className="text-xs font-semibold text-latitud-gray uppercase tracking-wider mb-2">Rangos rápidos</p>
+              <div className="flex flex-wrap gap-2">
+                {QUICK_BUDGETS.map(q => (
+                  <button key={q.label} onClick={() => { setPriceMin(q.min); setPriceMax(q.max); }}
+                    className={`px-3 py-2 rounded-full text-xs font-medium border-2 ${priceMin === q.min && priceMax === q.max ? 'border-[#C9A45C] bg-[#E6D3A3]/20 text-latitud-black' : 'border-gray-100 text-latitud-gray'}`}>
+                    {q.label}
+                  </button>
+                ))}
+              </div>
             </motion.div>
           )}
 
           {step === 3 && (
             <motion.div key="s3" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
-              <h2 className="font-heading text-2xl text-latitud-black mb-2 leading-tight">Guarda tu match</h2>
-              <p className="text-latitud-gray text-sm mb-7">Recibe solo propiedades que realmente van contigo.</p>
-              <div className="space-y-5 flex-1">
+              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">Recámaras</h2>
+              <p className="text-latitud-gray text-sm mb-6">¿Cuántas necesitas?</p>
+              <div className="space-y-5">
                 <div>
-                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">Nombre</label>
-                  <input type="text" value={contact.name} onChange={e => setContact(p => ({ ...p, name: e.target.value }))} placeholder="Tu nombre" className="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-latitud-black text-base transition-colors" />
+                  <label className="text-xs font-semibold text-latitud-gray uppercase tracking-wider mb-2 block">Mínimo</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {BEDROOMS_MIN.map(n => (
+                      <button key={n} onClick={() => setBedroomsMin(n)}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium border-2 ${bedroomsMin === n ? 'border-[#C9A45C] bg-[#E6D3A3]/15 text-latitud-black' : 'border-gray-100 text-latitud-gray'}`}>
+                        {n === 0 ? 'Cualquiera' : `${n}+`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">WhatsApp</label>
-                  <input type="tel" value={contact.whatsapp} onChange={e => setContact(p => ({ ...p, whatsapp: e.target.value }))} placeholder="+52 999 123 4567" className="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-latitud-black text-base transition-colors" />
+                  <label className="text-xs font-semibold text-latitud-gray uppercase tracking-wider mb-2 block">Máximo</label>
+                  <div className="flex gap-2 flex-wrap">
+                    {BEDROOMS_MAX.map(n => (
+                      <button key={n} onClick={() => setBedroomsMax(n)}
+                        className={`px-4 py-2.5 rounded-xl text-sm font-medium border-2 ${bedroomsMax === n ? 'border-[#C9A45C] bg-[#E6D3A3]/15 text-latitud-black' : 'border-gray-100 text-latitud-gray'}`}>
+                        {n === 0 ? 'Cualquiera' : `≤ ${n}`}
+                      </button>
+                    ))}
+                  </div>
                 </div>
-                <div>
-                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">Correo <span className="text-latitud-gray/50">(opcional)</span></label>
-                  <input type="email" value={contact.email} onChange={e => setContact(p => ({ ...p, email: e.target.value }))} placeholder="tu@correo.com" className="w-full px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-latitud-black text-base transition-colors" />
-                  {contact.email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(contact.email) && (
-                    <p className="text-[10px] text-red-500 mt-1">Ingresa un correo válido</p>
-                  )}
-                </div>
-                <p className="text-[10px] text-latitud-gray/70 flex items-center gap-1"><MessageCircle size={11} /> Usaremos tu WhatsApp solo para dar seguimiento a tus matches y visitas. No spam.</p>
               </div>
-              <button onClick={next} disabled={!canContinue()} className="mt-6 w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl disabled:opacity-40 transition-opacity flex items-center justify-center gap-2">
-                {saving ? <div className="w-5 h-5 border-2 border-latitud-black/30 border-t-latitud-black rounded-full animate-spin" /> : 'Continuar'}
-              </button>
             </motion.div>
           )}
 
           {step === 4 && (
-            <motion.div key="s4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col items-center text-center">
-              <div className="w-16 h-16 rounded-full bg-[#E6D3A3]/25 flex items-center justify-center mb-5 mt-4">
-                <ShieldCheck size={30} className="text-[#C9A45C]" />
+            <motion.div key="s4" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} transition={{ duration: 0.3 }} className="flex-1 flex flex-col">
+              <h2 className="font-heading text-2xl text-latitud-black mb-1 leading-tight">Activar notificaciones</h2>
+              <p className="text-latitud-gray text-sm mb-6">Te avisamos cuando haya nuevos matches para ti.</p>
+              <div className="flex items-center justify-between bg-latitud-light rounded-xl p-3 mb-5">
+                <div className="flex items-center gap-2">
+                  <Bell size={16} className="text-[#C9A45C]" />
+                  <span className="text-sm font-medium text-latitud-black">Notificaciones por WhatsApp</span>
+                </div>
+                <button onClick={() => setNotifications(n => !n)} className={`w-11 h-6 rounded-full transition-colors relative ${notifications ? 'bg-[#C9A45C]' : 'bg-gray-200'}`}>
+                  <span className={`block w-5 h-5 bg-white rounded-full shadow absolute top-0.5 transition-all ${notifications ? 'left-5' : 'left-0.5'}`} />
+                </button>
               </div>
-              <h2 className="font-heading text-2xl text-latitud-black mb-2 leading-tight">Verifica tu WhatsApp</h2>
-              <p className="text-latitud-gray text-sm mb-1">Te enviamos un código por WhatsApp para confirmar tu número.</p>
-              <p className="text-xs text-[#C9A45C] font-medium mb-6">Modo demo: usa el código {demoCode} para continuar.</p>
-
-              <input
-                type="text"
-                inputMode="numeric"
-                maxLength={6}
-                value={otp}
-                onChange={e => { setOtp(e.target.value.replace(/\D/g, '')); setOtpError(''); }}
-                placeholder="••••••"
-                className="w-48 text-center text-2xl tracking-[0.5em] font-bold px-4 py-4 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-latitud-black transition-colors mb-2"
-              />
-              {otpError && <p className="text-xs text-red-500 mb-3">{otpError}</p>}
-
-              <button onClick={() => setOtp('')} className="text-xs text-latitud-gray flex items-center gap-1 mb-6">
-                <RefreshCw size={12} /> Reenviar código
-              </button>
-
-              <button
-                onClick={verifyOtp}
-                disabled={otp.length !== 6 || saving}
-                className="w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl disabled:opacity-40 transition-opacity flex items-center justify-center gap-2"
-              >
-                {saving ? <div className="w-5 h-5 border-2 border-latitud-black/30 border-t-latitud-black rounded-full animate-spin" /> : 'Verificar y continuar'}
-              </button>
+              <div className="space-y-4 flex-1">
+                <div>
+                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">Nombre</label>
+                  <input type="text" value={contact.name} onChange={e => setContact(p => ({ ...p, name: e.target.value }))} placeholder="Tu nombre"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">WhatsApp</label>
+                  <input type="tel" value={contact.whatsapp} onChange={e => setContact(p => ({ ...p, whatsapp: e.target.value }))} placeholder="+52 999 123 4567"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
+                </div>
+                <div>
+                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">Correo <span className="text-latitud-gray/50">(opcional)</span></label>
+                  <input type="email" value={contact.email} onChange={e => setContact(p => ({ ...p, email: e.target.value }))} placeholder="tu@correo.com"
+                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
+                </div>
+              </div>
             </motion.div>
           )}
         </AnimatePresence>
+      </div>
+
+      {/* Buttons */}
+      <div className="px-6 pb-8 flex items-center gap-3">
+        {step > 0 && (
+          <button onClick={back} className="px-5 py-3.5 rounded-xl border-2 border-gray-100 text-latitud-gray font-semibold text-sm">Atrás</button>
+        )}
+        {step < 4 && (
+          <button onClick={skip} className="px-5 py-3.5 rounded-xl text-latitud-gray font-medium text-sm">Omitir</button>
+        )}
+        {step < 4 ? (
+          <button onClick={next} disabled={!canNext()} className="flex-1 bg-[#C9A45C] text-latitud-black font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
+            Siguiente <ArrowRight size={16} />
+          </button>
+        ) : (
+          <button onClick={finish} disabled={!canNext() || saving} className="flex-1 bg-[#C9A45C] text-latitud-black font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
+            {saving ? <div className="w-5 h-5 border-2 border-latitud-black/30 border-t-latitud-black rounded-full animate-spin" /> : 'Comenzar a explorar'}
+          </button>
+        )}
       </div>
     </div>
   );

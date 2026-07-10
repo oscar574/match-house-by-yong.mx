@@ -1,27 +1,17 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, Compass, DollarSign } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, MessageCircle, Compass } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
+import { partitionByClientPreferences } from '@/lib/clientFilters';
+import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
 import TourRequestModal from '@/components/TourRequestModal';
 import PropertyThumb from '@/components/PropertyThumb';
+import BottomNav from '@/components/BottomNav';
 import LatitudLogo from '@/components/LatitudLogo';
 import { useToast } from '@/components/ui/use-toast';
-
-const similarityScore = (p, client) => {
-  let s = 0;
-  if (client?.favorite_zones?.includes(p.zone)) s += 3;
-  const maxB = client?.budget_max_estimated || 0;
-  if (maxB > 0 && p.price <= maxB) s += 2;
-  if (client?.preferred_bedrooms && p.bedrooms === client.preferred_bedrooms) s += 2;
-  const feats = client?.important_features || [];
-  (p.amenities || []).forEach(a => {
-    if (feats.some(f => a.toLowerCase().includes(f.toLowerCase()))) s += 1;
-  });
-  return s;
-};
 
 export default function Favorites() {
   const navigate = useNavigate();
@@ -55,11 +45,13 @@ export default function Favorites() {
 
     setLikedProperties(liked);
 
-    const also = allProps
-      .filter(p => !likedIds.includes(p.id) && isBuyerVisible(p))
-      .map(p => ({ ...p, _sim: similarityScore(p, clientData), _match: calculateMatch(p, clientData).percentage }))
-      .sort((a, b) => b._sim - a._sim || b._match - a._match)
-      .slice(0, 6);
+    // Recommendations: only in the client's preferred zones (hard filter).
+    const { inZone } = partitionByClientPreferences(allProps, clientData);
+    const also = inZone
+      .filter(p => !likedIds.includes(p.id))
+      .map(p => ({ ...p, _match: calculateMatch(p, clientData).percentage }))
+      .sort((a, b) => (b._match || 0) - (a._match || 0))
+      .slice(0, 8);
     setAlsoLike(also);
 
     setLoading(false);
@@ -94,12 +86,12 @@ export default function Favorites() {
   const atLimit = likedProperties.length >= 20;
 
   return (
-    <div className="min-h-screen bg-latitud-black">
+    <div className="min-h-screen bg-latitud-black pb-28">
       {/* Header */}
       <div className="px-5 pt-6 pb-4 sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => navigate('/discover')} className="p-1 -ml-1">
-            <ArrowLeft size={22} className="text-white" />
+            <Heart size={22} className="text-white" />
           </button>
           <LatitudLogo variant="white" size="sm" />
           <div className="w-8" />
@@ -116,27 +108,32 @@ export default function Favorites() {
       </div>
 
       {/* List */}
-      <div className="px-4 py-4 space-y-4 pb-36">
-        {/* Profile summary */}
+      <div className="px-4 py-4 space-y-4">
+        {/* Profile summary + tour request */}
         {likedProperties.length > 0 && client && (
           <div className="bg-white/[0.06] rounded-2xl p-4 border border-white/10">
-            <div className="grid grid-cols-3 gap-3 text-center">
+            <div className="grid grid-cols-3 gap-3 text-center mb-3">
               <div>
-                <DollarSign size={14} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-[11px] text-white font-semibold leading-tight">{client.budget_range || '—'}</p>
-                <p className="text-[9px] text-white/40">Presupuesto</p>
+                <span className="text-[11px] text-white font-semibold leading-tight block">{client.budget_range || '—'}</span>
+                <span className="text-[9px] text-white/40">Presupuesto</span>
               </div>
               <div>
-                <MapPin size={14} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-[11px] text-white font-semibold leading-tight truncate">{(client.favorite_zones || []).slice(0, 2).join(', ') || '—'}</p>
-                <p className="text-[9px] text-white/40">Zonas</p>
+                <MapPin size={14} className="text-latitud-orange mx-auto mb-0.5" />
+                <span className="text-[11px] text-white font-semibold leading-tight block truncate">{(client.favorite_zones || []).slice(0, 2).join(', ') || '—'}</span>
+                <span className="text-[9px] text-white/40">Zonas</span>
               </div>
               <div>
-                <Heart size={14} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-[11px] text-white font-semibold leading-tight">{likedProperties.length} guardadas</p>
-                <p className="text-[9px] text-white/40">Selección</p>
+                <Heart size={14} className="text-latitud-orange mx-auto mb-0.5" />
+                <span className="text-[11px] text-white font-semibold leading-tight block">{likedProperties.length} guardadas</span>
+                <span className="text-[9px] text-white/40">Selección</span>
               </div>
             </div>
+            <button
+              onClick={() => setShowTour(true)}
+              className="w-full mt-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
+            >
+              <Calendar size={16} /> Solicitar recorrido
+            </button>
           </div>
         )}
 
@@ -205,11 +202,20 @@ export default function Favorites() {
                       >
                         Ver detalle
                       </button>
+                      <a
+                        href={buildPropertyWhatsAppUrl(property)}
+                        target="_blank"
+                        rel="noreferrer"
+                        onClick={(e) => e.stopPropagation()}
+                        className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-[#25D366] text-white flex items-center justify-center gap-1.5"
+                      >
+                        <MessageCircle size={14} /> WhatsApp
+                      </a>
                       <button
                         onClick={(e) => { e.stopPropagation(); removeFavorite(property); }}
-                        className="px-4 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center gap-1.5"
+                        className="px-3 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center"
                       >
-                        <Trash2 size={14} /> Quitar
+                        <Trash2 size={14} />
                       </button>
                     </div>
                   </div>
@@ -219,7 +225,7 @@ export default function Favorites() {
           </>
         )}
 
-        {/* También te pueden gustar */}
+        {/* También te pueden gustar — in-zone recommendations */}
         {alsoLike.length > 0 && (
           <div className="pt-6">
             <h3 className="font-heading text-lg text-white mb-1">También te pueden gustar</h3>
@@ -231,25 +237,15 @@ export default function Favorites() {
             </div>
           </div>
         )}
-      </div>
 
-      {/* Sticky CTA */}
-      {likedProperties.length > 0 && (
-        <div className="fixed bottom-0 left-0 right-0 bg-latitud-black/95 backdrop-blur-sm border-t border-white/10 px-4 py-3 flex gap-3 z-40">
-          <button
-            onClick={() => navigate('/discover')}
-            className="px-4 py-3 rounded-xl border border-white/20 text-white/80 font-semibold text-sm flex items-center gap-1.5"
-          >
-            <Compass size={15} /> Seguir explorando
-          </button>
-          <button
-            onClick={() => setShowTour(true)}
-            className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
-          >
-            <Calendar size={16} /> Solicitar recorrido
-          </button>
-        </div>
-      )}
+        {likedProperties.length === 0 && (
+          <div className="pt-6">
+            <button onClick={() => navigate('/discover')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/15 text-white/70 font-medium text-sm">
+              <Compass size={15} /> Seguir explorando
+            </button>
+          </div>
+        )}
+      </div>
 
       <TourRequestModal
         open={showTour}
@@ -259,6 +255,7 @@ export default function Favorites() {
         clientId={localStorage.getItem('latitud_client_id')}
         onSubmit={() => setShowTour(false)}
       />
+      <BottomNav />
     </div>
   );
 }

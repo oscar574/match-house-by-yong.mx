@@ -1,9 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, Phone } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, MessageCircle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
+import { partitionByClientPreferences } from '@/lib/clientFilters';
+import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
 import { addLeadScore, getLeadStatus, ensureLeadTask } from '@/lib/leadScoring';
 import VisitModal from '@/components/VisitModal';
@@ -77,14 +79,12 @@ export default function PropertyDetail() {
             }
           }, 20000);
 
-          // Similar properties
-          const zoneProps = await base44.entities.Property.filter({ status: 'Disponible', zone: p.zone });
-          let sim = zoneProps.filter(x => x.id !== p.id && isBuyerVisible(x));
-          if (sim.length < 4) {
-            const cityProps = await base44.entities.Property.filter({ status: 'Disponible', city: 'Mérida' });
-            const more = cityProps.filter(x => x.id !== p.id && isBuyerVisible(x) && !sim.find(s => s.id === x.id) && Math.abs(x.price - p.price) / p.price < 0.5);
-            sim = [...sim, ...more];
-          }
+          // Similar properties (respect client hard filters: zones, budget, operation, bedrooms)
+          const allProps = await base44.entities.Property.list('-created_date', 1000);
+          const { inZone, outOfZone } = partitionByClientPreferences(allProps, c);
+          const pool = inZone.length >= 4 ? inZone : [...inZone, ...outOfZone];
+          let sim = pool.filter(x => x.id !== p.id);
+          sim.sort((a, b) => Math.abs((a.price || 0) - (p.price || 0)) - Math.abs((b.price || 0) - (p.price || 0)));
           if (cancelled) return;
           sim = sim.slice(0, 5).map(x => ({ ...x, _match: c ? calculateMatch(x, c).percentage : null }));
           setSimilar(sim);
@@ -205,7 +205,6 @@ export default function PropertyDetail() {
   const photos = getPropertyPhotos(property);
   const clientId = localStorage.getItem('latitud_client_id');
   const clientName = localStorage.getItem('latitud_client_name');
-  const advisorPhone = (property.advisor_phone || '').replace(/[^0-9]/g, '');
 
   return (
     <div className="min-h-screen bg-white pb-28">
@@ -426,13 +425,13 @@ export default function PropertyDetail() {
           Volver
         </button>
         <a
-          href={advisorPhone ? `https://wa.me/${advisorPhone}` : '#'}
+          href={buildPropertyWhatsAppUrl(property)}
           target="_blank"
           rel="noreferrer"
-          className="px-4 py-3 rounded-xl border-2 border-latitud-orange text-latitud-orange font-semibold text-sm flex items-center justify-center gap-1.5"
+          className="px-4 py-3 rounded-xl border-2 border-[#25D366] text-[#1ebe57] font-semibold text-sm flex items-center justify-center gap-1.5"
         >
-          <Phone size={15} />
-          Asesor
+          <MessageCircle size={15} />
+          WhatsApp
         </a>
         <button
           onClick={() => setShowVisit(true)}

@@ -14,6 +14,7 @@ import Discover from '@/pages/Discover';
 import PropertyDetail from '@/pages/PropertyDetail';
 import Favorites from '@/pages/Favorites';
 import ClientProfile from '@/pages/ClientProfile';
+import ClientVisits from '@/pages/ClientVisits';
 
 // Auth pages
 import Login from '@/pages/Login';
@@ -46,6 +47,7 @@ function App() {
             <Route path="/discover" element={<Discover />} />
             <Route path="/property/:id" element={<PropertyDetail />} />
             <Route path="/favorites" element={<Favorites />} />
+            <Route path="/visits" element={<ClientVisits />} />
             <Route path="/profile" element={<ClientProfile />} />
 
             {/* Auth pages */}

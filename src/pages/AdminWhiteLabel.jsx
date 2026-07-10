@@ -15,6 +15,7 @@ export default function AdminWhiteLabel() {
     accent_color: brandConfig.colors.champagne_gold,
     contact_whatsapp: brandConfig.contact_whatsapp || '',
     contact_email: brandConfig.contact_email || '',
+    whatsapp_number: brandConfig.whatsapp_number || '',
     logo_url: brandConfig.logo_url || '',
     demo_mode: brandConfig.demo_whatsapp_otp_enabled,
     require_whatsapp_verification: brandConfig.require_whatsapp_verification
@@ -63,6 +64,7 @@ export default function AdminWhiteLabel() {
         <ColorField label="Secondary color" value={cfg.secondary_color} onChange={v => set('secondary_color', v)} />
         <ColorField label="Accent color" value={cfg.accent_color} onChange={v => set('accent_color', v)} />
         <Field label="Contact WhatsApp" value={cfg.contact_whatsapp} onChange={v => set('contact_whatsapp', v)} />
+        <Field label="WhatsApp de contacto (propiedades)" value={cfg.whatsapp_number} onChange={v => set('whatsapp_number', v)} />
         <Field label="Contact email" value={cfg.contact_email} onChange={v => set('contact_email', v)} />
         <Field label="Logo URL" value={cfg.logo_url} onChange={v => set('logo_url', v)} />
         <Toggle label="Demo mode" value={cfg.demo_mode} onChange={v => set('demo_mode', v)} />

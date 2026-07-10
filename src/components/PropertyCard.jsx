@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
+import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, MessageCircle } from 'lucide-react';
 import { formatPriceExact } from '@/lib/matchEngine';
+import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getPropertyPhotos, getFallbackImage, FALLBACK_ARCHITECTURE } from '@/lib/propertyImages';
 
 export default function PropertyCard({ property, matchPercentage, matchReason }) {
@@ -142,11 +143,23 @@ export default function PropertyCard({ property, matchPercentage, matchReason })
 
         {/* Match reason - prominent */}
         {matchReason && (
-          <div className="flex items-start gap-2 bg-latitud-orange/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-latitud-orange/30">
+          <div className="flex items-start gap-2 bg-latitud-orange/20 backdrop-blur-sm rounded-xl px-3 py-2 border border-latitud-orange/30 mb-3">
             <Sparkles size={14} className="text-latitud-orange mt-0.5 shrink-0" />
             <p className="text-white/95 text-xs leading-relaxed">{matchReason}</p>
           </div>
         )}
+
+        {/* WhatsApp contact */}
+        <a
+          href={buildPropertyWhatsAppUrl(property)}
+          target="_blank"
+          rel="noreferrer"
+          onClick={(e) => e.stopPropagation()}
+          className="flex items-center justify-center gap-2 w-full bg-[#25D366] text-white text-sm font-semibold py-2.5 rounded-xl"
+        >
+          <MessageCircle size={16} />
+          Contactar por WhatsApp
+        </a>
       </div>
     </div>
   );

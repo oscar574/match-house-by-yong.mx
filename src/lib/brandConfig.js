@@ -10,14 +10,17 @@ export const brandConfig = {
   contact_email: '',
   advisor_whatsapp: '',
   company_whatsapp: '',
-  default_whatsapp_message_template: 'Hola, soy {{client_name}}. Ya hice mi selección en MatchHouse y me gustaría agendar un recorrido. Estas son las propiedades que me interesan: {{property_titles}}. Mi presupuesto aproximado es {{budget_range}} y prefiero {{preferred_zones}}.',
+  // WhatsApp number used by the "Contactar por WhatsApp" button on property
+  // cards and detail. Editable from Admin > White Label. Initial value below.
+  whatsapp_number: '529992397113',
+  default_whatsapp_message_template: 'Hola, soy {{client_name}}. Ya hice mi selecci\u00f3n en MatchHouse y me gustar\u00eda agendar un recorrido. Estas son las propiedades que me interesan: {{property_titles}}. Mi presupuesto aproximado es {{budget_range}} y prefiero {{preferred_zones}}.',
   require_whatsapp_verification: true,
   demo_whatsapp_otp_enabled: true,
   demo_whatsapp_otp_code: '123456',
   tagline: 'Private real estate discovery.',
   taglines: {
     primary: 'Find the property that actually fits you.',
-    secondary: 'A private real estate discovery experience that learns your lifestyle, budget and timing — then shows you homes worth seeing.',
+    secondary: 'A private real estate discovery experience that learns your lifestyle, budget and timing \u2014 then shows you homes worth seeing.',
     tertiary: 'No endless listings. Just curated matches.'
   },
   taglines_es: {
@@ -48,5 +51,24 @@ export const brandConfig = {
     error: '#B42318'
   }
 };
+
+// Effective WhatsApp number: white-label override (Admin > White Label) wins,
+// falling back to the default in brandConfig. Non-hardcoded and editable.
+export function getWhatsAppNumber() {
+  try {
+    const overrides = JSON.parse(localStorage.getItem('matchhouse_brand_overrides') || '{}');
+    const fromOverride = (overrides.whatsapp_number || overrides.contact_whatsapp || '').toString().replace(/\D/g, '');
+    if (fromOverride) return fromOverride;
+  } catch (e) { /* ignore */ }
+  return (brandConfig.whatsapp_number || '').toString().replace(/\D/g, '');
+}
+
+export function buildPropertyWhatsAppUrl(property) {
+  const number = getWhatsAppNumber();
+  const propId = property?.easybroker_public_id || property?.id || '';
+  const title = property?.title || 'esta propiedad';
+  const message = `Hola, me interesa la propiedad "${title}" (ID: ${propId}). \u00bfMe puedes dar m\u00e1s informaci\u00f3n?`;
+  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`;
+}
 
 export default brandConfig;

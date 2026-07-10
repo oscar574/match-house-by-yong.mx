@@ -1,24 +1,22 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { X, Heart, Calendar, Info, MessageCircle, Sparkles } from 'lucide-react';
+import { X, Heart, Calendar, Info, Sparkles, SlidersHorizontal } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import PropertyCard from '@/components/PropertyCard';
 import PropertyCarousel from '@/components/PropertyCarousel';
 import DislikeModal from '@/components/DislikeModal';
 import VisitModal from '@/components/VisitModal';
 import InsightModal from '@/components/InsightModal';
+import SearchPreferencesModal from '@/components/SearchPreferencesModal';
+import BottomNav from '@/components/BottomNav';
 import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
+import { partitionByClientPreferences } from '@/lib/clientFilters';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 import { useToast } from '@/components/ui/use-toast';
-
-// Only show homes that share commission and can generate income.
-function isCommissionVisible(p) {
-  return isBuyerVisible(p);
-}
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -29,6 +27,7 @@ export default function Discover() {
   const [showDislike, setShowDislike] = useState(false);
   const [showVisit, setShowVisit] = useState(false);
   const [showInsight, setShowInsight] = useState(false);
+  const [showPrefs, setShowPrefs] = useState(false);
   const [reactionCount, setReactionCount] = useState(0);
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
@@ -47,8 +46,11 @@ export default function Discover() {
     loadData();
   }, []);
 
-  const enrichAndSort = (items, clientData) => {
-    let avail = items.filter(isCommissionVisible);
+  // Enrich visible, not-yet-reacted, non-duplicate properties with match score.
+  // Zone / budget / operation / bedrooms hard filtering happens later in
+  // partitionByClientPreferences — the match score only orders within that subset.
+  const enrichAndFilter = (items, clientData) => {
+    let avail = items.filter(isBuyerVisible);
     avail = avail.filter(p => !reactedIdsRef.current.has(p.id));
     avail = avail.filter(p => p.is_duplicate !== true);
     if (clientData) {
@@ -74,7 +76,6 @@ export default function Discover() {
     }
     clientRef.current = clientData;
 
-    // Get already reacted properties
     let reactedIds = [];
     if (clientId) {
       const reactions = await base44.entities.Reaction.filter({ client_id: clientId });
@@ -82,14 +83,14 @@ export default function Discover() {
     }
     reactedIdsRef.current = new Set(reactedIds);
 
-    // First batch of 50; more batches load progressively as the user swipes.
     const first = await base44.entities.Property.list('-created_date', 50);
     first.forEach(p => fetchedIdsRef.current.add(p.id));
     exhaustedRef.current = first.length < 50;
     countDuplicates(first);
 
-    const deck = enrichAndSort(first, clientData);
+    const deck = enrichAndFilter(first, clientData);
     setProperties(deck);
+    setCurrentIndex(0);
     setLoading(false);
   };
 
@@ -98,8 +99,6 @@ export default function Discover() {
     if (fetchedIdsRef.current.size === 0) { setLoadEpoch(e => e + 1); return; }
     loadingMoreRef.current = true;
     try {
-      // Paginate by excluding already-fetched ids (created_date $lt is not
-      // supported by the SDK on the built-in date-time field).
       const more = await base44.entities.Property.filter(
         { id: { $nin: Array.from(fetchedIdsRef.current) } },
         '-created_date',
@@ -110,7 +109,7 @@ export default function Discover() {
       } else {
         more.forEach(p => fetchedIdsRef.current.add(p.id));
         if (more.length < 50) exhaustedRef.current = true;
-        const newDeck = enrichAndSort(more, clientRef.current);
+        const newDeck = enrichAndFilter(more, clientRef.current);
         if (newDeck.length > 0) {
           emptyStreakRef.current = 0;
           setProperties(prev => [...prev, ...newDeck]);
@@ -124,48 +123,46 @@ export default function Discover() {
     setLoadEpoch(e => e + 1);
   };
 
-  // Auto-load next batch when fewer than 10 cards remain in the deck.
+  // Hard partition by client preferences (zones + budget + operation + bedrooms).
+  const partitioned = useMemo(() => partitionByClientPreferences(properties, client), [properties, client]);
+  const inZone = partitioned.inZone;
+  const outOfZone = partitioned.outOfZone;
+
+  // Auto-load next batch when fewer than 10 in-zone cards remain in the deck.
   useEffect(() => {
     if (loading) return;
-    const remaining = properties.length - currentIndex;
+    const remaining = inZone.length - currentIndex;
     if (remaining < 10 && !exhaustedRef.current && !loadingMoreRef.current) {
       loadMore();
     }
-  }, [currentIndex, properties.length, loading, loadEpoch]);
+  }, [currentIndex, inZone.length, loading, loadEpoch]);
 
-  const currentProperty = properties[currentIndex];
+  const currentProperty = inZone[currentIndex];
 
-  // Build carousels from all loaded properties (max 20 each)
+  // Carousels — only in-zone properties (hard filter). No English subtitles.
   const carousels = useMemo(() => {
-    const pool = properties;
+    const pool = inZone;
+    if (pool.length === 0) return [];
     const budgetMax = client?.budget_max_estimated || null;
-    const favZones = client?.favorite_zones || [];
-
-    const recommended = pool.slice(0, 20);
+    const recommended = [...pool].sort((a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0)).slice(0, 20);
     const newMatches = [...pool].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 20);
     const inBudget = budgetMax ? pool.filter(p => p.price <= budgetMax).slice(0, 20) : pool.slice(0, 20);
-    const similarToFavs = favZones.length > 0 ? pool.filter(p => favZones.includes(p.zone)).slice(0, 20) : pool.slice(0, 20);
-    const luxury = [...pool].sort((a, b) => b.price - a.price).slice(0, 20);
     const familyHomes = pool.filter(p => (p.bedrooms || 0) >= 3).slice(0, 20);
     const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
     const investments = pool.filter(p => p.rental_potential || (p.investment_profile && p.investment_profile !== 'N/A')).slice(0, 20);
-    const northZones = ['Temozón Norte','Cabo Norte','San Ramón Norte','Privadas de Mérida Norte','Montebello','Altabrisa','Santa Gertrudis Copó','Dzityá'];
-    const meridaNorte = pool.filter(p => northZones.includes(p.zone)).slice(0, 20);
-    const countryClub = pool.filter(p => (p.zone || '').includes('Country Club') || (p.lifestyle_tags || []).includes('Country Club')).slice(0, 20);
 
     return [
-      { title: 'Curadas para ti', subtitle: 'Curated for you', properties: recommended },
-      { title: 'Nuevos matches luxury', subtitle: 'New luxury matches', properties: newMatches },
-      { title: 'Dentro de tu presupuesto', subtitle: 'Within your budget', properties: inBudget },
-      { title: 'Estilo Country Club', subtitle: 'Country Club lifestyle', properties: countryClub },
-      { title: 'Residencias privadas', subtitle: 'Private residences', properties: luxury },
-      { title: 'Casas con alberca', subtitle: 'Pool homes', properties: withPool },
-      { title: 'Selección de inversión', subtitle: 'Investment picks', properties: investments },
-      { title: 'Similares a tus favoritas', subtitle: 'En tu radar', properties: similarToFavs },
-      { title: 'Casas familiares', subtitle: '3+ recámaras', properties: familyHomes },
-      { title: 'Mérida Norte', subtitle: 'Mejor zona de la ciudad', properties: meridaNorte },
+      { title: 'Tu match perfecto', properties: recommended },
+      { title: 'Recién llegadas', properties: newMatches },
+      { title: 'Dentro de tu presupuesto', properties: inBudget },
+      { title: 'Joyas de tu zona', properties: recommended },
+      { title: 'Para toda la familia', properties: familyHomes },
+      { title: 'Con alberca', properties: withPool },
+      { title: 'Ideales para invertir', properties: investments }
     ].filter(c => c.properties.length > 0);
-  }, [properties, client]);
+  }, [inZone, client]);
+
+  const showOutOfZone = inZone.length < 10 && outOfZone.length > 0;
 
   const handleReaction = async (type, extra = {}) => {
     if (!currentProperty) return;
@@ -190,7 +187,6 @@ export default function Discover() {
     });
     reactedIdsRef.current.add(currentProperty.id);
 
-    // Update client counts + lead score
     const updates = { last_activity_date: new Date().toISOString() };
     let action = null;
     let bonusAction = null;
@@ -209,13 +205,8 @@ export default function Discover() {
       action = 'REQUEST_VISIT';
     }
 
-    // Lead scoring
     const hasVisit = (client?.visit_requests_count || 0) > 0 || type === 'visit_request';
-    const { score: newScore, status: newStatus } = addLeadScore(
-      leadScore,
-      action,
-      hasVisit
-    );
+    const { score: newScore, status: newStatus } = addLeadScore(leadScore, action, hasVisit);
     updates.lead_score = newScore;
     updates.buyer_intent_score = newScore;
     updates.lead_status = newStatus;
@@ -237,7 +228,6 @@ export default function Discover() {
       }
     }
 
-    // Maintenance: keep arrays short
     if (type === 'like' && client?.favorite_property_ids) {
       if (!client.favorite_property_ids.includes(currentProperty.id)) {
         updates.favorite_property_ids = [...client.favorite_property_ids, currentProperty.id].slice(-50);
@@ -249,7 +239,9 @@ export default function Discover() {
       }
     }
 
-    await base44.entities.Client.update(clientId, updates);
+    const updated = await base44.entities.Client.update(clientId, updates);
+    setClient(prev => ({ ...prev, ...updates, favorite_property_ids: updates.favorite_property_ids || prev?.favorite_property_ids, rejected_property_ids: updates.rejected_property_ids || prev?.rejected_property_ids }));
+    clientRef.current = { ...clientRef.current, ...updates };
 
     if (type === 'like' && ((client?.liked_count || 0) + 1) === 3) {
       ensureLeadTask({ clientId, clientName: client?.name, advisor: client?.assigned_advisor, title: `Cliente guardó 3 propiedades — enviar recomendaciones`, taskType: 'Enviar propiedades', priority: 'Media' });
@@ -267,6 +259,23 @@ export default function Discover() {
   const handleLike = () => handleReaction('like');
   const handleVisit = () => setShowVisit(true);
 
+  const onPrefsSaved = async () => {
+    // Refetch the client so the hard filters (zones/budget/operation/bedrooms)
+    // re-apply immediately, and reset the deck to the top.
+    const clientId = localStorage.getItem('latitud_client_id');
+    if (clientId) {
+      try {
+        const c = await base44.entities.Client.get(clientId);
+        setClient(c);
+        clientRef.current = c;
+        setLeadScore(c.lead_score || 0);
+      } catch (e) { /* ignore */ }
+    }
+    setCurrentIndex(0);
+    setDirection(0);
+    toast({ title: 'Preferencias actualizadas', description: 'Tu búsqueda se refiltró.' });
+  };
+
   if (loading) {
     return (
       <div className="min-h-screen bg-latitud-black flex items-center justify-center">
@@ -275,15 +284,18 @@ export default function Discover() {
     );
   }
 
-  const noMore = currentIndex >= properties.length;
+  const noMore = currentIndex >= inZone.length;
   const hasSwipable = !noMore && currentProperty;
 
   return (
-    <div className="min-h-screen bg-latitud-black pb-10">
+    <div className="min-h-screen bg-latitud-black pb-28">
       {/* Header */}
       <div className="px-4 pt-6 pb-3 flex items-center justify-between sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <LatitudLogo variant="white" size="sm" />
         <div className="flex items-center gap-3">
+          <button onClick={() => setShowPrefs(true)} className="text-white/60 hover:text-latitud-orange transition-colors">
+            <SlidersHorizontal size={20} />
+          </button>
           <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors relative">
             <Heart size={20} />
             {client?.liked_count > 0 && (
@@ -291,9 +303,6 @@ export default function Discover() {
                 {client.liked_count}
               </span>
             )}
-          </button>
-          <button onClick={() => navigate('/profile')} className="text-white/60 hover:text-latitud-orange transition-colors">
-            <MessageCircle size={20} />
           </button>
         </div>
       </div>
@@ -304,7 +313,7 @@ export default function Discover() {
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-0.5">
               <Sparkles size={16} className="text-latitud-orange" />
-              <h2 className="font-heading text-xl text-white">Curado para ti</h2>
+              <h2 className="font-heading text-xl text-white">Tu match perfecto</h2>
             </div>
             <p className="text-white/40 text-xs ml-6">Desliza para ver más · Toca el corazón para guardar</p>
           </div>
@@ -372,28 +381,33 @@ export default function Discover() {
           <div className="w-16 h-16 rounded-full bg-latitud-orange/10 flex items-center justify-center mb-4 mx-auto">
             <Heart size={28} className="text-latitud-orange" />
           </div>
-          <h3 className="font-heading text-xl text-white mb-2">Has visto todas las propiedades</h3>
-          <p className="text-white/50 text-sm mb-6">Estamos buscando más opciones para ti.</p>
-          <button
-            onClick={() => navigate('/favorites')}
-            className="bg-latitud-orange text-white font-semibold px-8 py-3 rounded-xl"
-          >
-            Ver mis favoritas
-          </button>
+          <h3 className="font-heading text-xl text-white mb-2">Has visto todas las propiedades de tu zona</h3>
+          <p className="text-white/50 text-sm mb-6">Estamos buscando más opciones para ti. Ajusta tus preferencias para ver otras zonas.</p>
+          <div className="flex flex-col items-center gap-3">
+            <button onClick={() => setShowPrefs(true)} className="bg-latitud-orange text-white font-semibold px-8 py-3 rounded-xl">Ajustar preferencias</button>
+            <button onClick={() => navigate('/favorites')} className="text-white/70 font-medium px-8 py-3 rounded-xl border border-white/20">Ver mis favoritas</button>
+          </div>
         </div>
       )}
 
-      {/* Netflix-style carousels */}
+      {/* Netflix-style carousels (in-zone only) */}
       <div className="pt-4">
         {carousels.map((c, i) => (
-          <PropertyCarousel
-            key={i}
-            title={c.title}
-            subtitle={c.subtitle}
-            properties={c.properties}
-          />
+          <PropertyCarousel key={i} title={c.title} properties={c.properties} />
         ))}
       </div>
+
+      {/* Fuera de tu zona — clearly separated section, only when in-zone < 10 */}
+      {showOutOfZone && (
+        <div className="pt-6">
+          <div className="px-4 mb-2 flex items-center gap-3">
+            <div className="h-px flex-1 bg-white/10" />
+            <span className="text-[10px] uppercase tracking-wider text-white/40 whitespace-nowrap">Fuera de tu zona</span>
+            <div className="h-px flex-1 bg-white/10" />
+          </div>
+          <PropertyCarousel title="Podrían interesarte" properties={outOfZone} />
+        </div>
+      )}
 
       {/* Modals */}
       <DislikeModal
@@ -421,6 +435,14 @@ export default function Discover() {
         client={client}
         onViewMatches={() => { setShowInsight(false); navigate('/favorites'); }}
       />
+      <SearchPreferencesModal
+        open={showPrefs}
+        onClose={() => setShowPrefs(false)}
+        client={client}
+        onSaved={onPrefsSaved}
+      />
+
+      <BottomNav />
     </div>
   );
 }
