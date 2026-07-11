@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star,
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
+import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 
 const WA_MESSAGES = [
   { label: 'Enviar selección', template: 'Hola, [Nombre]. Vi que te gustaron algunas propiedades en [Zona]. Te preparé una selección más cercana a lo que buscas. ¿Te la envío por aquí?' },
@@ -108,7 +109,7 @@ export default function AdminClientDetail() {
         <div className="space-y-3">
           <div className="flex items-center gap-3">
             <Phone size={14} className="text-latitud-gray" />
-            <span className="text-sm text-latitud-black">{client.whatsapp}</span>
+            <span className="text-sm text-latitud-black">{formatPhoneDisplay(client.whatsapp) || client.whatsapp}</span>
           </div>
           {client.email && (
             <div className="flex items-center gap-3">

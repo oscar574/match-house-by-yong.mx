@@ -56,7 +56,7 @@ export default function Welcome() {
               Una experiencia privada que entiende tu estilo de vida, presupuesto y momento de compra — y luego cura casas que vale la pena ver.
             </p>
 
-            <Link to="/onboarding">
+            <Link to="/access">
               <motion.button whileTap={{ scale: 0.97 }} className="w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl text-lg mb-3 active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow">
                 Iniciar mi match <ArrowRight size={20} />
               </motion.button>

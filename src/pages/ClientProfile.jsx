@@ -43,6 +43,7 @@ export default function ClientProfile() {
   const handleLogout = () => {
     localStorage.removeItem('latitud_client_id');
     localStorage.removeItem('latitud_client_name');
+    localStorage.removeItem('latitud_session_token');
     navigate('/');
   };
 

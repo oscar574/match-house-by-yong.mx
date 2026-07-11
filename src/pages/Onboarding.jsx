@@ -6,6 +6,7 @@ import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
 import { countAvailable, availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
 import { formatThousands, parseThousands } from '@/lib/priceFormat';
+import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 
 const OPERATIONS = [
   { value: 'Comprar', label: 'Comprar', desc: 'Encuentra tu próxima casa' },
@@ -25,6 +26,7 @@ export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(0);
   const totalSteps = 5;
+  const [ready, setReady] = useState(false);
   const [operation, setOperation] = useState('');
   const [zones, setZones] = useState([]);
   const [zoneQuery, setZoneQuery] = useState('');
@@ -40,6 +42,32 @@ export default function Onboarding() {
 
   useEffect(() => {
     (async () => {
+      // Onboarding now completes an existing client created by the OTP flow
+      // (or pre-registered by an advisor). It must NOT create a new verified
+      // record — phone verification happens in the OTP flow.
+      const clientId = localStorage.getItem('latitud_client_id');
+      if (!clientId) { navigate('/access', { replace: true }); return; }
+      try {
+        const client = await base44.entities.Client.get(clientId);
+        if (client) {
+          setOperation(client.operation_preference || '');
+          setZones(client.favorite_zones || []);
+          setPriceMin(client.budget_min_estimated > 0 ? client.budget_min_estimated : 0);
+          setPriceMax(client.budget_max_estimated > 0 ? client.budget_max_estimated : 0);
+          setBedroomsMin(client.preferred_bedrooms > 0 ? client.preferred_bedrooms : 0);
+          setBedroomsMax(client.preferred_bedrooms_max > 0 ? client.preferred_bedrooms_max : 0);
+          setNotifications(client.notifications_enabled !== false);
+          setContact({ name: client.name || '', whatsapp: client.whatsapp || '', email: client.email || '' });
+          // Start at the first incomplete step (advisor preload wins, client completes the rest).
+          let start = 0;
+          if (client.operation_preference) start = 1;
+          if (client.favorite_zones?.length > 0) start = 2;
+          if (client.budget_max_estimated > 0) start = 3;
+          if (client.bedrooms_wanted && client.bedrooms_wanted !== 'No importa') start = 4;
+          setStep(start);
+        }
+      } catch (e) { /* ignore */ }
+      setReady(true);
       try {
         const props = await base44.entities.Property.list('-created_date', 1000);
         setAllProps(props);
@@ -72,7 +100,8 @@ export default function Onboarding() {
   const finish = async () => {
     setSaving(true);
     try {
-      const clientData = {
+      const clientId = localStorage.getItem('latitud_client_id');
+      const updates = {
         name: contact.name,
         whatsapp: contact.whatsapp,
         email: contact.email || '',
@@ -88,22 +117,28 @@ export default function Onboarding() {
         property_type_wanted: 'Casa',
         notifications_enabled: notifications,
         onboarding_completed: true,
-        phone_verified: true,
-        whatsapp_verified_at: new Date().toISOString(),
-        buyer_intent_score: 10,
-        lead_score: 10,
-        lead_status: 'explorando',
         commercial_stage: 'Onboarding completado',
-        lead_source: 'MatchHouse',
-        assigned_advisor: 'Carlos Ramírez'
+        last_activity_date: new Date().toISOString()
       };
-      const client = await base44.entities.Client.create(clientData);
-      localStorage.setItem('latitud_client_id', client.id);
+      // Phone is verified by the OTP flow — onboarding must NOT set phone_verified.
+      if (clientId) {
+        await base44.entities.Client.update(clientId, updates);
+      } else {
+        await base44.entities.Client.create({ ...updates, lead_source: 'MatchHouse', assigned_advisor: 'Carlos Ramírez', buyer_intent_score: 10, lead_score: 10, lead_status: 'explorando' });
+      }
       localStorage.setItem('latitud_client_name', contact.name);
-      navigate('/discover');
+      navigate('/discover', { replace: true });
     } catch (e) { /* ignore */ }
     setSaving(false);
   };
+
+  if (!ready) {
+    return (
+      <div className="min-h-screen bg-white flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-latitud-orange/30 border-t-latitud-orange rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-white flex flex-col">
@@ -253,9 +288,10 @@ export default function Onboarding() {
                     className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
                 </div>
                 <div>
-                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">WhatsApp</label>
-                  <input type="tel" value={contact.whatsapp} onChange={e => setContact(p => ({ ...p, whatsapp: e.target.value }))} placeholder="+52 999 123 4567"
-                    className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 focus:border-[#C9A45C] focus:outline-none text-base" />
+                  <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">WhatsApp (verificado)</label>
+                  <div className="w-full px-4 py-3.5 rounded-xl border-2 border-gray-100 bg-gray-50 text-base text-latitud-gray">
+                    {formatPhoneDisplay(contact.whatsapp) || '—'}
+                  </div>
                 </div>
                 <div>
                   <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-2 block">Correo <span className="text-latitud-gray/50">(opcional)</span></label>

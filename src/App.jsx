@@ -10,6 +10,7 @@ import ScrollToTop from './components/ScrollToTop';
 
 // Public client pages
 import Welcome from '@/pages/Welcome';
+import Access from '@/pages/Access';
 import Onboarding from '@/pages/Onboarding';
 import Discover from '@/pages/Discover';
 import PropertyDetail from '@/pages/PropertyDetail';
@@ -45,6 +46,7 @@ function App() {
           <Routes>
             {/* Public client routes - no auth required */}
             <Route path="/" element={<Welcome />} />
+            <Route path="/access" element={<Access />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/discover" element={<Discover />} />
             <Route path="/property/:id" element={<PropertyDetail />} />

@@ -1,8 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
-import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle } from 'lucide-react';
+import { Link, useNavigate } from 'react-router-dom';
+import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle, UserPlus, RefreshCw, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
+import RegisterClientModal from '@/components/RegisterClientModal';
+import { useToast } from '@/components/ui/use-toast';
 
 const timeAgo = (iso) => {
   if (!iso) return '—';
@@ -16,10 +18,14 @@ const timeAgo = (iso) => {
 };
 
 export default function AdminClients() {
+  const navigate = useNavigate();
+  const { toast } = useToast();
   const [clients, setClients] = useState([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
   const [filter, setFilter] = useState('all');
+  const [showRegister, setShowRegister] = useState(false);
+  const [normalizing, setNormalizing] = useState(false);
 
   useEffect(() => {
     base44.entities.Client.list('-created_date', 100).then(c => {
@@ -34,6 +40,20 @@ export default function AdminClients() {
     return matchesSearch && matchesFilter;
   });
 
+  const normalizePhones = async () => {
+    setNormalizing(true);
+    try {
+      const res = await base44.functions.invoke('normalizeClients', {});
+      const d = res.data || {};
+      toast({ title: 'Teléfonos normalizados', description: `${d.normalized || 0} normalizados · ${d.duplicatesMarked || 0} duplicados marcados.` });
+      const c = await base44.entities.Client.list('-created_date', 100);
+      setClients(c);
+    } catch (e) {
+      toast({ title: 'Error', description: e.response?.data?.error || e.message });
+    }
+    setNormalizing(false);
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -44,8 +64,18 @@ export default function AdminClients() {
 
   return (
     <div className="px-4 py-6">
-      <h1 className="font-heading text-2xl text-latitud-black mb-1">MatchHouse Clients</h1>
-      <p className="text-sm text-latitud-gray mb-5">{clients.length} clientes registrados</p>
+      <div className="flex items-center justify-between mb-1">
+        <h1 className="font-heading text-2xl text-latitud-black">Clientes</h1>
+        <button onClick={() => setShowRegister(true)} className="flex items-center gap-2 bg-latitud-orange text-white text-sm font-semibold px-4 py-2.5 rounded-xl">
+          <UserPlus size={16} /> Registrar cliente
+        </button>
+      </div>
+      <div className="flex items-center justify-between mb-5">
+        <p className="text-sm text-latitud-gray">{clients.length} clientes registrados</p>
+        <button onClick={normalizePhones} disabled={normalizing} className="flex items-center gap-1.5 text-xs text-latitud-gray hover:text-latitud-orange">
+          {normalizing ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />} Normalizar teléfonos
+        </button>
+      </div>
 
       {/* Search */}
       <div className="relative mb-4">
@@ -125,6 +155,13 @@ export default function AdminClients() {
           </Link>
         );})}
       </div>
+
+      <RegisterClientModal
+        open={showRegister}
+        onClose={() => setShowRegister(false)}
+        onExisting={(id) => { setShowRegister(false); navigate(`/admin/client/${id}`); }}
+        onCreated={(id) => { setShowRegister(false); navigate(`/admin/client/${id}`); }}
+      />
     </div>
   );
 }
