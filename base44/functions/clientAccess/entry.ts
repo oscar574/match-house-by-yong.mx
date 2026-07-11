@@ -3,6 +3,22 @@ import { createClientFromRequest } from 'npm:@base44/sdk@0.8.31';
 const OTP_TTL_MS = 10 * 60 * 1000; // 10 minutes
 const MAX_ATTEMPTS = 5;
 
+// === MODO DEMO (por defecto) ===
+// Demo mode is on by default: the fixed code below is accepted and shown on
+// screen ("Modo demo: usa el código 123456"). No provider needed.
+const DEMO_MODE = true;
+const DEMO_CODE = '123456';
+
+// === MODO PRODUCCIÓN (WhatsApp API via Twilio) ===
+// Para enviar códigos reales por WhatsApp:
+// 1) Configura los secrets TWILIO_SID, TWILIO_TOKEN y TWILIO_WHATSAPP_FROM
+//    (Dashboard > Settings > Environment Variables).
+// 2) Cambia DEMO_MODE a false.
+// 3) Implementa sendViaTwilio: lee esos secrets, haz POST a la API de Twilio Messages
+//    (Basic auth con SID:TOKEN, From = el número remitente, To = whatsapp:<phone>,
+//    Body con el código) y llámala en sendOtp en lugar de devolver demoCode.
+//    El código de producción NUNCA se devuelve ni se loguea.
+
 function normalizePhone(input) {
   if (input == null) return '';
   let d = String(input).replace(/\D/g, '');
@@ -16,37 +32,6 @@ function normalizePhone(input) {
 
 function genCode() {
   return String(Math.floor(100000 + Math.random() * 900000));
-}
-
-// Demo mode = explicitly enabled OR no provider configured (fallback).
-function isDemoMode() {
-  const demoEnabled = (Deno.env.get("DEMO_OTP_ENABLED") ?? "true").toLowerCase() !== "false";
-  const hasTwilio = !!(Deno.env.get("TWILIO_SID") && Deno.env.get("TWILIO_TOKEN"));
-  return demoEnabled || !hasTwilio;
-}
-
-// Production path: send the real OTP via Twilio WhatsApp API.
-// Only fires when TWILIO_SID / TWILIO_TOKEN / TWILIO_WHATSAPP_FROM are set.
-async function sendViaTwilio(phone, code) {
-  const sid = Deno.env.get("TWILIO_SID");
-  const token = Deno.env.get("TWILIO_TOKEN");
-  const from = Deno.env.get("TWILIO_WHATSAPP_FROM");
-  if (!sid || !token || !from) return false;
-  try {
-    const auth = btoa(`${sid}:${token}`);
-    const res = await fetch(`https://api.twilio.com/2010-04-01/Accounts/${sid}/Messages.json`, {
-      method: 'POST',
-      headers: { Authorization: `Basic ${auth}`, 'Content-Type': 'application/x-www-form-urlencoded' },
-      body: new URLSearchParams({
-        From: from,
-        To: `whatsapp:${phone}`,
-        Body: `Tu código MatchHouse es ${code}. Válido por 10 minutos.`
-      })
-    });
-    return res.ok;
-  } catch (e) {
-    return false;
-  }
 }
 
 Deno.serve(async (req) => {
@@ -63,8 +48,7 @@ Deno.serve(async (req) => {
       const found = await base44.asServiceRole.entities.Client.filter({ whatsapp: phone });
       // Prefer the master record (not marked as duplicate) so OTP links to the data-rich record.
       const master = found.find(c => !c.duplicate_of) || found[0];
-      const demo = isDemoMode();
-      const code = demo ? (Deno.env.get("DEMO_OTP_CODE") || '123456') : genCode();
+      const code = DEMO_MODE ? DEMO_CODE : genCode();
       const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
       const otpFields = { whatsapp_otp_code: code, whatsapp_otp_expires_at: expires, whatsapp_otp_attempts: 0 };
       if (master) {
@@ -78,13 +62,12 @@ Deno.serve(async (req) => {
           ...otpFields
         });
       }
-      if (!demo) await sendViaTwilio(phone, code);
-      // Only the demo code is returned (intentional, shown on screen). The production
-      // code is never returned nor logged.
+      // In production: await sendViaTwilio(phone, code);
+      // The production code is never returned nor logged. Only the demo code is returned (shown on screen).
       return Response.json({
         ok: true,
-        mode: demo ? 'demo' : 'production',
-        ...(demo ? { demoCode: Deno.env.get("DEMO_OTP_CODE") || '123456' } : {})
+        mode: DEMO_MODE ? 'demo' : 'production',
+        ...(DEMO_MODE ? { demoCode: DEMO_CODE } : {})
       });
     }
 
