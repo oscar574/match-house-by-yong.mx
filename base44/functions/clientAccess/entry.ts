@@ -45,9 +45,41 @@ Deno.serve(async (req) => {
       if (!/^\d{12}$/.test(phone) || !phone.startsWith('52')) {
         return Response.json({ ok: false, error: 'Número inválido. Usa un teléfono mexicano de 10 dígitos.' }, { status: 400 });
       }
+
+      // Read the live setting on every request — no caching — so toggling
+      // it in Admin > White Label applies instantly to all users/devices.
+      const settingsRecords = await base44.asServiceRole.entities.BrandSettings.list('-created_date', 1);
+      const requireVerification = settingsRecords[0]?.require_whatsapp_verification === true;
+
       const found = await base44.asServiceRole.entities.Client.filter({ whatsapp: phone });
-      // Prefer the master record (not marked as duplicate) so OTP links to the data-rich record.
+      // Prefer the master record (not marked as duplicate) so we link to the data-rich record.
       const master = found.find(c => !c.duplicate_of) || found[0];
+
+      if (!requireVerification) {
+        // Verification OFF — access directly: find or create the Client by
+        // phone, issue a session, but never mark phone_verified.
+        const has = (v) => v != null && v !== '' && !(Array.isArray(v) && v.length === 0);
+        const sessionToken = crypto.randomUUID();
+        let client = master;
+        if (client) {
+          await base44.asServiceRole.entities.Client.update(client.id, {
+            session_token: sessionToken,
+            last_activity_date: new Date().toISOString()
+          });
+        } else {
+          client = await base44.asServiceRole.entities.Client.create({
+            whatsapp: phone,
+            name: '',
+            phone_verified: false,
+            lead_source: 'MatchHouse',
+            session_token: sessionToken,
+            last_activity_date: new Date().toISOString()
+          });
+        }
+        const needsOnboarding = !has(client.name) || !has(client.operation_preference) || !has(client.favorite_zones) || !(client.budget_max_estimated > 0);
+        return Response.json({ ok: true, mode: 'direct', client_id: client.id, session_token: sessionToken, needsOnboarding });
+      }
+
       const code = DEMO_MODE ? DEMO_CODE : genCode();
       const expires = new Date(Date.now() + OTP_TTL_MS).toISOString();
       const otpFields = { whatsapp_otp_code: code, whatsapp_otp_expires_at: expires, whatsapp_otp_attempts: 0 };

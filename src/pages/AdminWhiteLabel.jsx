@@ -4,6 +4,7 @@ import { base44 } from '@/api/base44Client';
 import { brandConfig } from '@/lib/brandConfig';
 import { useBrandRefresh } from '@/lib/BrandSettingsContext';
 import { useToast } from '@/components/ui/use-toast';
+import { Switch } from '@/components/ui/switch';
 
 const DEFAULTS = {
   brand_name: brandConfig.brand_name,
@@ -15,7 +16,8 @@ const DEFAULTS = {
   whatsapp_number: brandConfig.whatsapp_number,
   contact_email: brandConfig.contact_email || '',
   tagline_principal: brandConfig.taglines_es.primary,
-  tagline_secundaria: brandConfig.taglines_es.secondary
+  tagline_secundaria: brandConfig.taglines_es.secondary,
+  require_whatsapp_verification: false
 };
 
 export default function AdminWhiteLabel() {
@@ -160,6 +162,18 @@ export default function AdminWhiteLabel() {
           <button onClick={save} disabled={saving} className="flex-1 bg-latitud-orange text-white font-semibold py-3 rounded-xl flex items-center justify-center gap-2 disabled:opacity-50">
             {saving ? <div className="w-5 h-5 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <><Save size={16} /> Guardar</>}
           </button>
+        </div>
+      </div>
+
+      {/* Seguridad de acceso */}
+      <div className="bg-white rounded-2xl p-4 shadow-sm mt-4">
+        <h2 className="font-heading text-base text-latitud-black mb-3">Seguridad de acceso</h2>
+        <div className="flex items-center justify-between gap-4">
+          <div>
+            <p className="text-sm font-medium text-latitud-black">Requerir verificación por WhatsApp (OTP)</p>
+            <p className="text-xs text-latitud-gray mt-0.5">Si está apagado, los usuarios entran solo con su teléfono, sin código de verificación. Guarda para aplicar.</p>
+          </div>
+          <Switch checked={!!cfg.require_whatsapp_verification} onCheckedChange={v => set('require_whatsapp_verification', v)} />
         </div>
       </div>
     </div>

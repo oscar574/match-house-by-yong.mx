@@ -29,6 +29,12 @@ export default function Access() {
       const res = await base44.functions.invoke('clientAccess', { action: 'sendOtp', phone: normalized });
       const data = res.data || {};
       if (!data.ok) { setError(data.error || 'No se pudo enviar el código.'); setSending(false); return; }
+      if (data.mode === 'direct') {
+        localStorage.setItem('latitud_client_id', data.client_id);
+        localStorage.setItem('latitud_session_token', data.session_token);
+        navigate(data.needsOnboarding ? '/onboarding' : '/discover', { replace: true });
+        return;
+      }
       if (data.demoCode) setDemoCode(data.demoCode);
       localStorage.setItem('latitud_pending_phone', normalized);
       setStep('code');
