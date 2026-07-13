@@ -157,6 +157,19 @@
         "type": "string"
       }
     },
+    "curated_property_ids": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "curated_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "curated_by": {
+      "type": "string"
+    },
     "liked_count": {
       "type": "number",
       "default": 0

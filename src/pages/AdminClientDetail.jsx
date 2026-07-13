@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
 import { formatPhoneDisplay } from '@/lib/phoneNormalize';
+import CuratedSelectionEditor from '@/components/CuratedSelectionEditor';
 
 const WA_MESSAGES = [
   { label: 'Enviar selección', template: 'Hola, [Nombre]. Vi que te gustaron algunas propiedades en [Zona]. Te preparé una selección más cercana a lo que buscas. ¿Te la envío por aquí?' },
@@ -252,6 +253,13 @@ export default function AdminClientDetail() {
           </div>
         )}
       </div>
+
+      {/* Selección del asesor */}
+      <CuratedSelectionEditor
+        client={client}
+        allProps={allProps}
+        onSaved={(updated) => setClient(prev => ({ ...prev, ...updated }))}
+      />
 
       {/* Rejection reasons */}
       {dislikes.filter(d => d.dislike_reason).length > 0 && (

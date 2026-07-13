@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, MessageCircle, Compass } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, MessageCircle, Compass, Star } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
@@ -17,6 +17,7 @@ export default function Favorites() {
   const navigate = useNavigate();
   const [likedProperties, setLikedProperties] = useState([]);
   const [alsoLike, setAlsoLike] = useState([]);
+  const [curatedProperties, setCuratedProperties] = useState([]);
   const [client, setClient] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showTour, setShowTour] = useState(false);
@@ -53,6 +54,17 @@ export default function Favorites() {
       .sort((a, b) => (b._match || 0) - (a._match || 0))
       .slice(0, 8);
     setAlsoLike(also);
+
+    // Selección del asesor — always shown in full, regardless of swipes, in saved order.
+    // Skip curated properties no longer published, silently.
+    const curatedIds = clientData?.curated_property_ids || [];
+    if (curatedIds.length > 0) {
+      const propMap = Object.fromEntries(allProps.map(p => [p.id, p]));
+      const curated = curatedIds.map(id => propMap[id]).filter(Boolean);
+      setCuratedProperties(curated);
+    } else {
+      setCuratedProperties([]);
+    }
 
     setLoading(false);
   };
@@ -109,6 +121,21 @@ export default function Favorites() {
 
       {/* List */}
       <div className="px-4 py-4 space-y-4">
+        {/* Selección de tu asesor — always visible, independent of swipes */}
+        {curatedProperties.length > 0 && (
+          <div className="bg-[#C9A45C]/10 border border-[#C9A45C]/30 rounded-2xl p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <Star size={16} className="text-[#C9A45C]" fill="currentColor" />
+              <h3 className="font-heading text-base text-white">Selección de tu asesor</h3>
+            </div>
+            <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
+              {curatedProperties.map(p => (
+                <PropertyThumb key={p.id} property={p} />
+              ))}
+            </div>
+          </div>
+        )}
+
         {/* Profile summary + tour request */}
         {likedProperties.length > 0 && client && (
           <div className="bg-white/[0.06] rounded-2xl p-4 border border-white/10">

@@ -31,6 +31,7 @@ export default function Discover() {
   const [reactionCount, setReactionCount] = useState(0);
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
+  const [curatedProperties, setCuratedProperties] = useState([]);
   const { toast } = useToast();
 
   // Progressive loading refs
@@ -41,6 +42,7 @@ export default function Discover() {
   const loadingMoreRef = useRef(false);
   const emptyStreakRef = useRef(0);
   const clientRef = useRef(null);
+  const curatedIdsSetRef = useRef(new Set());
 
   useEffect(() => {
     loadData();
@@ -53,6 +55,7 @@ export default function Discover() {
     let avail = items.filter(isBuyerVisible);
     avail = avail.filter(p => !reactedIdsRef.current.has(p.id));
     avail = avail.filter(p => p.is_duplicate !== true);
+    avail = avail.filter(p => !curatedIdsSetRef.current.has(p.id));
     if (clientData) {
       avail = avail.map(p => {
         const match = calculateMatch(p, clientData);
@@ -82,6 +85,20 @@ export default function Discover() {
       reactedIds = reactions.map(r => r.property_id);
     }
     reactedIdsRef.current = new Set(reactedIds);
+
+    // Curated selection from the advisor — shown first in the swipe deck,
+    // in saved order, badge-marked, excluding already-reacted or unpublished ones.
+    const curatedIds = clientData?.curated_property_ids || [];
+    if (curatedIds.length > 0) {
+      const curatedFetched = await base44.entities.Property.filter({ id: { $in: curatedIds } });
+      const curatedMap = Object.fromEntries(curatedFetched.map(p => [p.id, p]));
+      const curatedDeck = curatedIds
+        .map(id => curatedMap[id])
+        .filter(p => p && isBuyerVisible(p) && !reactedIdsRef.current.has(p.id))
+        .map(p => ({ ...p, _isCurated: true }));
+      curatedIdsSetRef.current = new Set(curatedDeck.map(p => p.id));
+      setCuratedProperties(curatedDeck);
+    }
 
     const first = await base44.entities.Property.list('-created_date', 50);
     first.forEach(p => fetchedIdsRef.current.add(p.id));
@@ -128,16 +145,20 @@ export default function Discover() {
   const inZone = partitioned.inZone;
   const outOfZone = partitioned.outOfZone;
 
+  // Swipe deck: advisor-curated properties always come first, in saved order,
+  // before the match-algorithm deck (inZone). Carousels below stay untouched.
+  const swipeDeck = useMemo(() => [...curatedProperties, ...inZone], [curatedProperties, inZone]);
+
   // Auto-load next batch when fewer than 10 in-zone cards remain in the deck.
   useEffect(() => {
     if (loading) return;
-    const remaining = inZone.length - currentIndex;
+    const remaining = swipeDeck.length - currentIndex;
     if (remaining < 10 && !exhaustedRef.current && !loadingMoreRef.current) {
       loadMore();
     }
-  }, [currentIndex, inZone.length, loading, loadEpoch]);
+  }, [currentIndex, swipeDeck.length, loading, loadEpoch]);
 
-  const currentProperty = inZone[currentIndex];
+  const currentProperty = swipeDeck[currentIndex];
 
   // Carousels — only in-zone properties (hard filter). No English subtitles.
   const carousels = useMemo(() => {
@@ -284,7 +305,7 @@ export default function Discover() {
     );
   }
 
-  const noMore = currentIndex >= inZone.length;
+  const noMore = currentIndex >= swipeDeck.length;
   const hasSwipable = !noMore && currentProperty;
 
   return (
@@ -331,6 +352,7 @@ export default function Discover() {
                   property={currentProperty}
                   matchPercentage={currentProperty._matchPercentage}
                   matchReason={currentProperty._matchReason}
+                  isCurated={currentProperty._isCurated}
                 />
               </motion.div>
             </AnimatePresence>

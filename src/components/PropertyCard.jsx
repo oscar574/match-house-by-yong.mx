@@ -1,10 +1,10 @@
 import React, { useState } from 'react';
-import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, MessageCircle } from 'lucide-react';
+import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, MessageCircle, Star } from 'lucide-react';
 import { formatPriceExact } from '@/lib/matchEngine';
 import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getPropertyPhotos, getFallbackImage, FALLBACK_ARCHITECTURE } from '@/lib/propertyImages';
 
-export default function PropertyCard({ property, matchPercentage, matchReason }) {
+export default function PropertyCard({ property, matchPercentage, matchReason, isCurated }) {
   const [photoIndex, setPhotoIndex] = useState(0);
   const [imgError, setImgError] = useState(false);
   const photos = getPropertyPhotos(property);
@@ -84,10 +84,15 @@ export default function PropertyCard({ property, matchPercentage, matchReason })
       )}
 
       {/* Operation type badge */}
-      <div className="absolute top-5 left-4 z-20">
+      <div className="absolute top-5 left-4 z-20 flex flex-col gap-1.5 items-start">
         <div className="bg-white/90 backdrop-blur-sm text-latitud-black text-xs font-semibold px-3 py-1.5 rounded-full">
           {property.operation_type}
         </div>
+        {isCurated && (
+          <div className="bg-[#C9A45C] text-latitud-black text-xs font-semibold px-3 py-1.5 rounded-full flex items-center gap-1.5 shadow-lg">
+            <Star size={12} fill="currentColor" /> Selección de tu asesor
+          </div>
+        )}
       </div>
 
       {/* Content overlay */}
