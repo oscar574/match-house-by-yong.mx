@@ -1,6 +1,7 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, MessageCircle } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
@@ -28,6 +29,39 @@ export default function PropertyDetail() {
   const allPhotosRef = useRef(false);
   const shareRef = useRef(false);
   const favoriteRef = useRef(false);
+
+  // Carousel photos (memoized so gesture handlers stay stable)
+  const photos = useMemo(() => property ? getPropertyPhotos(property) : [], [property]);
+  const [slideDir, setSlideDir] = useState(0);
+  const pointerStart = useRef(null);
+
+  const goTo = (i) => { setSlideDir(i > photoIndex ? -1 : 1); setPhotoIndex(i); };
+  const goNext = () => { if (photoIndex < photos.length - 1) goTo(photoIndex + 1); };
+  const goPrev = () => { if (photoIndex > 0) goTo(photoIndex - 1); };
+
+  // Preload adjacent photos for instant swipe
+  useEffect(() => {
+    if (photoIndex + 1 < photos.length) { const i = new Image(); i.src = photos[photoIndex + 1]; }
+    if (photoIndex - 1 >= 0) { const i = new Image(); i.src = photos[photoIndex - 1]; }
+  }, [photoIndex, photos]);
+
+  // Swipe/drag handling on the gallery photo area. Horizontal > 40px (and > vertical)
+  // navigates photos; vertical movement is left to the page scroll (touch-action: pan-y).
+  // Gestures starting on buttons/links/no-swipe badges are ignored so they keep their own tap.
+  const handlePointerDown = (e) => {
+    if (e.target?.closest?.('button, a, [data-no-swipe]')) { pointerStart.current = null; return; }
+    pointerStart.current = { x: e.clientX, y: e.clientY };
+  };
+  const handlePointerUp = (e) => {
+    if (!pointerStart.current) return;
+    const dx = e.clientX - pointerStart.current.x;
+    const dy = e.clientY - pointerStart.current.y;
+    pointerStart.current = null;
+    if (Math.abs(dx) > 40 && Math.abs(dx) > Math.abs(dy)) {
+      if (dx < 0) goNext(); else goPrev();
+    }
+  };
+  const handlePointerCancel = () => { pointerStart.current = null; };
 
   useEffect(() => {
     let cancelled = false;
@@ -202,21 +236,33 @@ export default function PropertyDetail() {
     );
   }
 
-  const photos = getPropertyPhotos(property);
   const clientId = localStorage.getItem('latitud_client_id');
   const clientName = localStorage.getItem('latitud_client_name');
 
   return (
     <div className="min-h-screen bg-white pb-28">
-      {/* Photo gallery */}
-      <div className="relative h-[60vh]">
-        <img
-          src={photos[photoIndex] || getFallbackImage(property)}
-          alt={property.title}
-          onError={(e) => { e.target.src = getFallbackImage(property); }}
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20" />
+      {/* Photo gallery — swipe/drag to navigate, vertical scroll preserved */}
+      <div
+        className="relative h-[60vh] touch-pan-y select-none"
+        onPointerDown={handlePointerDown}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+      >
+        <AnimatePresence initial={false} mode="sync">
+          <motion.img
+            key={photoIndex}
+            src={photos[photoIndex] || getFallbackImage(property)}
+            alt={property.title}
+            draggable={false}
+            onError={(e) => { e.target.src = getFallbackImage(property); }}
+            className="absolute inset-0 w-full h-full object-cover"
+            initial={{ opacity: 0, x: slideDir * 24 }}
+            animate={{ opacity: 1, x: 0 }}
+            exit={{ opacity: 0, x: slideDir * -24 }}
+            transition={{ duration: 0.25, ease: 'easeOut' }}
+          />
+        </AnimatePresence>
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-black/20 pointer-events-none" />
 
         {/* Top bar */}
         <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 pt-6">
@@ -234,7 +280,7 @@ export default function PropertyDetail() {
         </div>
 
         {/* Operation badge */}
-        <div className="absolute top-24 left-4">
+        <div className="absolute top-24 left-4" data-no-swipe>
           <span className="bg-latitud-orange text-latitud-black text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
             {property.operation_type}
           </span>
@@ -242,7 +288,7 @@ export default function PropertyDetail() {
 
         {/* Match badge */}
         {matchData && (
-          <div className="absolute top-24 right-4">
+          <div className="absolute top-24 right-4" data-no-swipe>
             <div className="bg-white/90 backdrop-blur-sm text-latitud-black text-xs font-bold px-3 py-1.5 rounded-full shadow-lg flex items-center gap-1">
               <Sparkles size={12} className="text-latitud-orange" /> {matchData.percentage}% match
             </div>
@@ -254,13 +300,13 @@ export default function PropertyDetail() {
           <>
             <div className="absolute bottom-4 left-0 right-0 flex justify-center gap-1.5">
               {photos.map((_, i) => (
-                <button key={i} onClick={() => setPhotoIndex(i)} className={`h-1.5 rounded-full transition-all ${i === photoIndex ? 'w-6 bg-white' : 'w-3 bg-white/40'}`} />
+                <button key={i} onClick={() => goTo(i)} className={`h-1.5 rounded-full transition-all ${i === photoIndex ? 'w-6 bg-white' : 'w-3 bg-white/40'}`} />
               ))}
             </div>
-            <button onClick={() => setPhotoIndex(i => Math.max(0, i - 1))} className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 rounded-full backdrop-blur-sm">
+            <button onClick={goPrev} className="absolute left-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 rounded-full backdrop-blur-sm">
               <ChevronLeft size={20} className="text-white" />
             </button>
-            <button onClick={() => setPhotoIndex(i => Math.min(photos.length - 1, i + 1))} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 rounded-full backdrop-blur-sm">
+            <button onClick={goNext} className="absolute right-3 top-1/2 -translate-y-1/2 p-1.5 bg-black/20 rounded-full backdrop-blur-sm">
               <ChevronRight size={20} className="text-white" />
             </button>
           </>
