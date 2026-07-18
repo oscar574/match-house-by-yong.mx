@@ -8,11 +8,11 @@ const VALUES = [
   { icon: Sparkles, title: 'Match inteligente de propiedades', desc: 'Casas que encajan contigo' },
   { icon: BarChart3, title: 'Seguimiento de intención', desc: 'Entendemos tu interés' },
   { icon: Users, title: 'Leads listos para el asesor', desc: 'Conecta con un asesor' },
-  { icon: Building2, title: 'Inmobiliaria premium', desc: 'Curaduría de calidad' }
+  { icon: Building2, title: 'Inmobiliaria premium', desc: 'Selección de calidad' }
 ];
 
 const TEAM_VALUES = [
-  { icon: Sparkles, title: 'Descubrimiento inteligente', desc: 'Matches curados, no listados infinitos.' },
+  { icon: Sparkles, title: 'Descubrimiento inteligente', desc: 'Matches seleccionados, no listados infinitos.' },
   { icon: BarChart3, title: 'Scoring de intención', desc: 'Sabe quién tiene mayor probabilidad de comprar.' },
   { icon: ShieldCheck, title: 'Captura por WhatsApp', desc: 'Contactos verificados, sin fricción.' },
   { icon: Calendar, title: 'Solicitudes de visita', desc: 'Visitas agendadas en un toque.' },
@@ -53,21 +53,16 @@ export default function Welcome() {
               MatchHouse aprende lo que buscas y te muestra casas que vale la pena ver.
             </h1>
             <p className="text-white/55 text-base leading-relaxed mb-8 max-w-md">
-              Una experiencia privada que entiende tu estilo de vida, presupuesto y momento de compra — y luego cura casas que vale la pena ver.
+              Una experiencia privada que entiende tu estilo de vida, tu presupuesto y tu momento — para mostrarte solo propiedades a tu altura.
             </p>
 
             <Link to="/access">
-              <motion.button whileTap={{ scale: 0.97 }} className="w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl text-lg mb-3 active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow">
-                Iniciar mi match <ArrowRight size={20} />
+              <motion.button whileTap={{ scale: 0.97 }} className="w-full bg-[#C9A45C] text-latitud-black font-semibold py-4 rounded-xl text-lg active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow">
+                Encontrar mi match <ArrowRight size={20} />
               </motion.button>
             </Link>
-            <Link to="/discover">
-              <button className="w-full border border-white/20 text-white/80 font-medium py-4 rounded-xl text-base hover:bg-white/5 transition-colors">
-                Explorar casas
-              </button>
-            </Link>
 
-            <p className="text-white/35 text-xs text-center mt-4">No spam. No es un portal. Solo casas curadas.</p>
+            <p className="text-white/35 text-xs text-center mt-4">No spam. No es un portal. Solo casas seleccionadas para ti.</p>
 
             <div className="grid grid-cols-2 gap-3 mt-8">
               {VALUES.map((v, i) => {
