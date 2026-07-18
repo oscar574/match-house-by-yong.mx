@@ -434,7 +434,10 @@ export default function Discover() {
       {/* Modals */}
       <DislikeModal
         open={showDislike}
-        onClose={() => setShowDislike(false)}
+        onClose={() => {
+          handleReaction('dislike', { dislike_reason: '' });
+          setShowDislike(false);
+        }}
         onSubmit={(reason) => {
           handleReaction('dislike', { dislike_reason: reason });
           setShowDislike(false);
