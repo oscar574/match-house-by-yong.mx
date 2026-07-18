@@ -56,6 +56,9 @@ export default function Discover() {
     avail = avail.filter(p => !reactedIdsRef.current.has(p.id));
     avail = avail.filter(p => p.is_duplicate !== true);
     avail = avail.filter(p => !curatedIdsSetRef.current.has(p.id));
+    if (clientData?.wants_pool) {
+      avail = avail.filter(p => p.has_pool === true);
+    }
     if (clientData) {
       avail = avail.map(p => {
         const match = calculateMatch(p, clientData);
@@ -94,7 +97,7 @@ export default function Discover() {
       const curatedMap = Object.fromEntries(curatedFetched.map(p => [p.id, p]));
       const curatedDeck = curatedIds
         .map(id => curatedMap[id])
-        .filter(p => p && isBuyerVisible(p) && !reactedIdsRef.current.has(p.id))
+        .filter(p => p && isBuyerVisible(p) && !reactedIdsRef.current.has(p.id) && (!clientData?.wants_pool || p.has_pool === true))
         .map(p => ({ ...p, _isCurated: true }));
       curatedIdsSetRef.current = new Set(curatedDeck.map(p => p.id));
       setCuratedProperties(curatedDeck);
@@ -164,22 +167,51 @@ export default function Discover() {
   const carousels = useMemo(() => {
     const pool = inZone;
     if (pool.length === 0) return [];
-    const budgetMax = client?.budget_max_estimated || null;
-    const recommended = [...pool].sort((a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0)).slice(0, 20);
-    const newMatches = [...pool].sort((a, b) => new Date(b.created_date) - new Date(a.created_date)).slice(0, 20);
-    const inBudget = budgetMax ? pool.filter(p => p.price <= budgetMax).slice(0, 20) : pool.slice(0, 20);
-    const familyHomes = pool.filter(p => (p.bedrooms || 0) >= 3).slice(0, 20);
-    const withPool = pool.filter(p => p.amenities?.some(a => a.toLowerCase().includes('alberca') || a.toLowerCase().includes('piscina'))).slice(0, 20);
-    const investments = pool.filter(p => p.rental_potential || (p.investment_profile && p.investment_profile !== 'N/A')).slice(0, 20);
+
+    const shuffle = (arr) => {
+      const a = [...arr];
+      for (let i = a.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    };
+
+    // Anti-repetition across sections: properties already shown at the front of
+    // a previous section are pushed down within the next (stable within groups),
+    // only repeating when there aren't enough distinct matches for a section.
+    const used = new Set();
+    const VISIBLE_FRONT = 10;
+    const build = (items, { sortFn, random } = {}) => {
+      let arr = [...items];
+      if (sortFn) arr.sort(sortFn);
+      else if (random) arr = shuffle(arr);
+      const fresh = arr.filter(p => !used.has(p.id));
+      const seen = arr.filter(p => used.has(p.id));
+      const ordered = [...fresh, ...seen];
+      const slice = ordered.slice(0, 20);
+      slice.slice(0, VISIBLE_FRONT).forEach(p => used.add(p.id));
+      return slice;
+    };
+
+    const byDate = (a, b) => new Date(b.easybroker_updated_at || b.created_date || 0).getTime() - new Date(a.easybroker_updated_at || a.created_date || 0).getTime();
+    const byMatch = (a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0);
+
+    const bMin = client?.budget_min_estimated || 0;
+    const bMax = client?.budget_max_estimated || 0;
+    const inBudget = bMax > 0 ? pool.filter(p => p.price >= bMin && p.price <= bMax) : pool;
+    const zones = client?.favorite_zones || [];
+    const zoneMatches = zones.length > 0 ? pool.filter(p => zones.includes(p.zone) || zones.includes(p.city)) : pool;
+    const withPool = pool.filter(p => p.has_pool === true);
+    const investments = pool.filter(p => p.rental_potential || (p.investment_profile && p.investment_profile !== 'N/A'));
 
     return [
-      { title: 'Tu match perfecto', properties: recommended },
-      { title: 'Recién llegadas', properties: newMatches },
-      { title: 'Dentro de tu presupuesto', properties: inBudget },
-      { title: 'Joyas de tu zona', properties: recommended },
-      { title: 'Para toda la familia', properties: familyHomes },
-      { title: 'Con alberca', properties: withPool },
-      { title: 'Ideales para invertir', properties: investments }
+      { title: 'Tu match perfecto', properties: build(pool, { sortFn: byMatch }) },
+      { title: 'Recién listadas', properties: build(pool, { sortFn: byDate }) },
+      { title: 'Dentro de tu presupuesto', properties: build(inBudget, { random: true }) },
+      { title: 'Joyas de tu zona', properties: build(zoneMatches, { random: true }) },
+      { title: 'Con alberca', properties: build(withPool, { random: true }) },
+      { title: 'Ideales para invertir', properties: build(investments, { random: true }) }
     ].filter(c => c.properties.length > 0);
   }, [inZone, client]);
 

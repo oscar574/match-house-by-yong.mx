@@ -38,6 +38,15 @@ function splitLocation(name) {
   return { neighborhood, city, state };
 }
 
+// Pool detection from EasyBroker features + title + description (accent/case
+// insensitive). Computed once at sync and stored as has_pool on the property.
+function detectPool(d, item) {
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '');
+  const features = (d.features || []).map(f => f.name || '').join(' ');
+  const hay = norm(`${features} ${d.title || item.title || ''} ${d.description || ''}`);
+  return ['alberca', 'piscina', 'pool'].some(t => hay.includes(norm(t)));
+}
+
 function evaluateVisibility(p) {
   if (p.property_type !== 'Casa') return { visible: false, reason: 'not_house' };
   if (p.operation_type !== 'Venta') return { visible: false, reason: 'not_sale' };
@@ -91,6 +100,7 @@ function mapDetail(d, item) {
     latitude: (d.location && d.location.latitude) || null,
     longitude: (d.location && d.location.longitude) || null,
     amenities: (d.features || []).map(f => f.name),
+    has_pool: detectPool(d, item),
     broker_origin: (d.agent && (d.agent.full_name || d.agent.name)) || null,
     agency_origin: (d.agency && d.agency.name) || null,
     collaboration_enabled: true,

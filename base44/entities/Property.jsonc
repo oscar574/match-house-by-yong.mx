@@ -310,6 +310,10 @@
       "type": "boolean",
       "default": false
     },
+    "has_pool": {
+      "type": "boolean",
+      "default": false
+    },
     "sync_source": {
       "type": "string",
       "enum": [

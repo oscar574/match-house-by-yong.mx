@@ -104,6 +104,10 @@
         "type": "string"
       }
     },
+    "wants_pool": {
+      "type": "boolean",
+      "default": false
+    },
     "notifications_enabled": {
       "type": "boolean",
       "default": true

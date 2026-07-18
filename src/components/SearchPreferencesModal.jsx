@@ -23,6 +23,7 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
   const [availableZones, setAvailableZones] = useState([]);
   const [zoneQuery, setZoneQuery] = useState('');
   const [saving, setSaving] = useState(false);
+  const [wantsPool, setWantsPool] = useState(false);
 
   useEffect(() => {
     if (!open) return;
@@ -32,6 +33,7 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
     setPriceMax(client?.budget_max_estimated > 0 ? client.budget_max_estimated : 0);
     setBedroomsMin(client?.preferred_bedrooms > 0 ? client.preferred_bedrooms : 0);
     setBedroomsMax(client?.preferred_bedrooms_max > 0 ? client.preferred_bedrooms_max : 0);
+    setWantsPool(!!client?.wants_pool);
     setZoneQuery('');
     (async () => {
       try {
@@ -58,7 +60,8 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
         budget_range: budgetLabel(min, max),
         preferred_bedrooms: bedroomsMin,
         preferred_bedrooms_max: bedroomsMax,
-        bedrooms_wanted: bedroomsMin > 0 ? `${bedroomsMin}+` : 'No importa'
+        bedrooms_wanted: bedroomsMin > 0 ? `${bedroomsMin}+` : 'No importa',
+        wants_pool: wantsPool
       });
       if (onSaved) await onSaved();
       onClose();
@@ -158,6 +161,17 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
                       ))}
                     </div>
                   </div>
+                </div>
+              </div>
+
+              {/* Amenities */}
+              <div>
+                <p className="text-xs font-semibold text-latitud-gray uppercase tracking-wider mb-2">Amenidades</p>
+                <div className="flex gap-2 flex-wrap">
+                  <button onClick={() => setWantsPool(v => !v)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium border ${wantsPool ? 'border-[#C9A45C] bg-[#E6D3A3]/20 text-latitud-black' : 'border-gray-100 text-latitud-gray'}`}>
+                    Alberca
+                  </button>
                 </div>
               </div>
 
