@@ -1,8 +1,9 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { motion } from 'framer-motion';
 import { ArrowRight, Sparkles, BarChart3, Users, Calendar, LayoutDashboard, Palette, Plug, Building2, ShieldCheck } from 'lucide-react';
 import LatitudLogo from '@/components/LatitudLogo';
+import { validateClientSession, needsOnboarding } from '@/lib/clientSession';
 
 const VALUES = [
   { icon: Sparkles, title: 'Match inteligente de propiedades', desc: 'Casas que encajan contigo' },
@@ -22,6 +23,27 @@ const TEAM_VALUES = [
 ];
 
 export default function Welcome() {
+  const navigate = useNavigate();
+  const [checking, setChecking] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const r = await validateClientSession();
+      if (r?.status === 'valid') { navigate(needsOnboarding(r.client) ? '/onboarding' : '/discover', { replace: true }); return; }
+      if (r === 'transient') { navigate('/discover', { replace: true }); return; }
+      // 'none' or 'invalid' → show the landing/login flow
+      setChecking(false);
+    })();
+  }, []);
+
+  if (checking) {
+    return (
+      <div className="min-h-screen bg-latitud-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-latitud-orange/30 border-t-latitud-orange rounded-full animate-spin" />
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-latitud-black flex flex-col">
       {/* ===== HERO ===== */}

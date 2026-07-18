@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ArrowLeft, ShieldCheck, Loader2, RefreshCw } from 'lucide-react';
 import LatitudLogo from '@/components/LatitudLogo';
 import { base44 } from '@/api/base44Client';
 import { normalizePhoneMX, isValidMX, formatPhoneDisplay } from '@/lib/phoneNormalize';
+import { validateClientSession, needsOnboarding } from '@/lib/clientSession';
 
 export default function Access() {
   const navigate = useNavigate();
@@ -15,6 +16,16 @@ export default function Access() {
   const [sending, setSending] = useState(false);
   const [verifying, setVerifying] = useState(false);
   const [error, setError] = useState('');
+  const [bootchecking, setBootChecking] = useState(true);
+
+  useEffect(() => {
+    (async () => {
+      const r = await validateClientSession();
+      if (r?.status === 'valid') { navigate(needsOnboarding(r.client) ? '/onboarding' : '/discover', { replace: true }); return; }
+      if (r === 'transient') { navigate('/discover', { replace: true }); return; }
+      setBootChecking(false);
+    })();
+  }, []);
 
   const normalized = normalizePhoneMX(phoneInput);
 
@@ -68,6 +79,14 @@ export default function Access() {
     setError('');
     await sendCode();
   };
+
+  if (bootchecking) {
+    return (
+      <div className="min-h-screen bg-latitud-black flex items-center justify-center">
+        <div className="w-8 h-8 border-2 border-latitud-orange/30 border-t-latitud-orange rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-latitud-black flex flex-col">
