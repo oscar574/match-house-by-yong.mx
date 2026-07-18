@@ -8,6 +8,7 @@ const DEFAULTS = {
   brand_name: brandConfig.brand_name,
   brand_subtitle: brandConfig.brand_subtitle,
   logo_url: '',
+  hero_image_url: '',
   primary_color: brandConfig.colors.obsidian,
   secondary_color: brandConfig.colors.taupe,
   accent_color: brandConfig.colors.champagne_gold,

@@ -3,6 +3,7 @@ import { Save, Upload, RotateCcw, Image as ImageIcon } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { brandConfig } from '@/lib/brandConfig';
 import { useBrandRefresh } from '@/lib/BrandSettingsContext';
+import { optimizeImage } from '@/lib/imageOptimize';
 import { useToast } from '@/components/ui/use-toast';
 import { Switch } from '@/components/ui/switch';
 
@@ -10,6 +11,7 @@ const DEFAULTS = {
   brand_name: brandConfig.brand_name,
   brand_subtitle: brandConfig.brand_subtitle,
   logo_url: '',
+  hero_image_url: '',
   primary_color: brandConfig.colors.obsidian,
   secondary_color: brandConfig.colors.taupe,
   accent_color: brandConfig.colors.champagne_gold,
@@ -28,7 +30,9 @@ export default function AdminWhiteLabel() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [uploadingHero, setUploadingHero] = useState(false);
   const fileRef = useRef(null);
+  const heroFileRef = useRef(null);
 
   useEffect(() => {
     (async () => {
@@ -58,6 +62,33 @@ export default function AdminWhiteLabel() {
     }
     setUploading(false);
     if (fileRef.current) fileRef.current.value = '';
+  };
+
+  const handleHeroUpload = async (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const allowed = ['image/jpeg', 'image/png', 'image/webp'];
+    if (!allowed.includes(file.type)) {
+      toast({ title: 'Formato no soportado', description: 'Usa JPG, PNG o WebP.' });
+      if (heroFileRef.current) heroFileRef.current.value = '';
+      return;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      toast({ title: 'Archivo muy pesado', description: 'El máximo es 10MB.' });
+      if (heroFileRef.current) heroFileRef.current.value = '';
+      return;
+    }
+    setUploadingHero(true);
+    try {
+      const optimized = await optimizeImage(file, { maxWidth: 1920, maxBytes: 400 * 1024 });
+      const { file_url } = await base44.integrations.Core.UploadFile({ file: optimized });
+      set('hero_image_url', file_url);
+      toast({ title: 'Imagen de portada cargada', description: 'Guarda para aplicarla en el landing.' });
+    } catch (err) {
+      toast({ title: 'Error al subir la imagen', description: err.message || 'Intenta de nuevo.' });
+    }
+    setUploadingHero(false);
+    if (heroFileRef.current) heroFileRef.current.value = '';
   };
 
   const restoreDefaults = () => {
@@ -97,26 +128,32 @@ export default function AdminWhiteLabel() {
       <p className="text-sm text-latitud-gray mb-5">Personaliza marca, logo, colores y contacto. Los cambios se aplican en toda la app al guardar.</p>
 
       {/* Live preview — reflects editing values before saving */}
-      <div className="rounded-2xl p-5 mb-5" style={{ background: cfg.primary_color }}>
-        <div className="flex items-center gap-2 mb-3">
-          {cfg.logo_url ? (
-            <img src={cfg.logo_url} alt="logo" className="h-10 w-auto object-contain rounded" />
-          ) : (
-            <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: cfg.accent_color }}>
-              <span className="font-extrabold text-sm" style={{ color: cfg.primary_color }}>{cfg.brand_name?.[0] || 'M'}</span>
+      <div className="relative rounded-2xl p-5 mb-5 overflow-hidden" style={{ background: cfg.primary_color }}>
+        {cfg.hero_image_url && (
+          <img src={cfg.hero_image_url} alt="portada" className="absolute inset-0 w-full h-full object-cover" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/55 to-black/25" />
+        <div className="relative">
+          <div className="flex items-center gap-2 mb-3">
+            {cfg.logo_url ? (
+              <img src={cfg.logo_url} alt="logo" className="h-10 w-auto object-contain rounded" />
+            ) : (
+              <div className="w-10 h-10 rounded-lg flex items-center justify-center" style={{ background: cfg.accent_color }}>
+                <span className="font-extrabold text-sm" style={{ color: cfg.primary_color }}>{cfg.brand_name?.[0] || 'M'}</span>
+              </div>
+            )}
+            <div>
+              <p className="text-white font-extrabold text-sm">{cfg.brand_name}</p>
+              <p className="text-white/60 text-[10px] tracking-widest">{cfg.brand_subtitle}</p>
             </div>
-          )}
-          <div>
-            <p className="text-white font-extrabold text-sm">{cfg.brand_name}</p>
-            <p className="text-white/60 text-[10px] tracking-widest">{cfg.brand_subtitle}</p>
           </div>
+          <p className="text-white/90 text-sm mb-1">{cfg.tagline_principal}</p>
+          <p className="text-white/50 text-xs mb-4">{cfg.tagline_secundaria}</p>
+          <button className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: cfg.accent_color, color: cfg.primary_color }}>
+            Encontrar mi match
+          </button>
+          <p className="text-white/40 text-[10px] mt-3">WhatsApp: {cfg.whatsapp_number || '—'}</p>
         </div>
-        <p className="text-white/70 text-sm mb-1">{cfg.tagline_principal}</p>
-        <p className="text-white/40 text-xs mb-4">{cfg.tagline_secundaria}</p>
-        <button className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: cfg.accent_color, color: cfg.primary_color }}>
-          Iniciar mi match
-        </button>
-        <p className="text-white/30 text-[10px] mt-3">WhatsApp: {cfg.whatsapp_number || '—'}</p>
       </div>
 
       {/* Form */}
@@ -146,6 +183,32 @@ export default function AdminWhiteLabel() {
             </div>
           </div>
           <input value={cfg.logo_url || ''} onChange={e => set('logo_url', e.target.value)} placeholder="o pega una URL de logo" className="mt-2 w-full px-4 py-3 rounded-xl border border-gray-100 text-sm focus:border-latitud-orange focus:outline-none transition-colors" />
+        </div>
+
+        {/* Hero cover image */}
+        <div>
+          <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Imagen de portada (hero)</label>
+          <div className="flex items-center gap-3">
+            <div className="w-24 h-14 rounded-xl bg-latitud-light border border-gray-100 flex items-center justify-center overflow-hidden shrink-0">
+              {cfg.hero_image_url ? (
+                <img src={cfg.hero_image_url} alt="portada" className="w-full h-full object-cover" />
+              ) : (
+                <ImageIcon size={20} className="text-latitud-gray/50" />
+              )}
+            </div>
+            <div className="flex-1">
+              <input ref={heroFileRef} type="file" accept=".png,.jpg,.jpeg,.webp,image/png,image/jpeg,image/webp" onChange={handleHeroUpload} className="hidden" />
+              <button onClick={() => heroFileRef.current?.click()} disabled={uploadingHero} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-gray-100 text-sm font-medium text-latitud-black disabled:opacity-50">
+                <Upload size={14} /> {uploadingHero ? 'Optimizando…' : 'Subir imagen'}
+              </button>
+              <p className="text-[10px] text-latitud-gray mt-1">JPG, PNG o WebP · se recomienda horizontal, mínimo 1920px de ancho</p>
+            </div>
+          </div>
+          {cfg.hero_image_url && (
+            <button onClick={() => set('hero_image_url', '')} className="mt-2 flex items-center gap-1.5 text-xs font-medium text-latitud-gray">
+              <RotateCcw size={12} /> Restaurar imagen por defecto
+            </button>
+          )}
         </div>
 
         <ColorField label="Color primario (fondos oscuros)" value={cfg.primary_color} onChange={v => set('primary_color', v)} />
