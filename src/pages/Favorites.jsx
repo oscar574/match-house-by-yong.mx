@@ -272,7 +272,7 @@ export default function Favorites() {
       </div>
 
       {activeTab === 'liked' && unavailableLikedCount > 0 && (
-        <p className="px-4 pt-1 text-xs text-white/40">{unavailableLikedCount} de tus propiedades guardadas ya no están disponibles.</p>
+        <p className="px-4 pt-1 text-xs text-white/40">{unavailableLikedCount} propiedades que guardaste ya no están publicadas. Tu asesor puede confirmarte si siguen a la venta.</p>
       )}
 
       {/* Tabs */}
@@ -282,13 +282,13 @@ export default function Favorites() {
             onClick={() => switchTab('liked')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'liked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
           >
-            Me gustan {likedTotal > 0 ? `· ${likedTotal}` : ''}
+            Me gustan {likedProperties.length > 0 ? `· ${likedProperties.length}` : ''}
           </button>
           <button
             onClick={() => switchTab('disliked')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'disliked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
           >
-            No me interesan {dislikedTotal > 0 ? `· ${dislikedTotal}` : ''}
+            No me interesan {dislikedProperties.length > 0 ? `· ${dislikedProperties.length}` : ''}
           </button>
         </div>
       </div>
@@ -327,7 +327,7 @@ export default function Favorites() {
                   </div>
                   <div>
                     <Heart size={14} className="text-latitud-orange mx-auto mb-0.5" />
-                    <span className="text-[11px] text-white font-semibold leading-tight block">{likedTotal} guardadas</span>
+                    <span className="text-[11px] text-white font-semibold leading-tight block">{likedProperties.length} guardadas</span>
                     <span className="text-[9px] text-white/40">Selección</span>
                   </div>
                 </div>
