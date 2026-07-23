@@ -19,7 +19,8 @@ const DEFAULTS = {
   contact_email: brandConfig.contact_email || '',
   tagline_principal: brandConfig.taglines_es.primary,
   tagline_secundaria: brandConfig.taglines_es.secondary,
-  require_whatsapp_verification: false
+  require_whatsapp_verification: false,
+  demo_mode_skip_access: false
 };
 
 export default function AdminWhiteLabel() {
@@ -237,6 +238,13 @@ export default function AdminWhiteLabel() {
             <p className="text-xs text-latitud-gray mt-0.5">Si está apagado, los usuarios entran solo con su teléfono, sin código de verificación. Guarda para aplicar.</p>
           </div>
           <Switch checked={!!cfg.require_whatsapp_verification} onCheckedChange={v => set('require_whatsapp_verification', v)} />
+        </div>
+        <div className="flex items-center justify-between gap-4 mt-4 pt-4 border-t border-gray-100">
+          <div>
+            <p className="text-sm font-medium text-latitud-black">Modo demo: entrar sin pedir teléfono</p>
+            <p className="text-xs text-latitud-gray mt-0.5">Actívalo solo para demostraciones. Los usuarios entran directo sin capturar su número y no se registran como prospectos reales.</p>
+          </div>
+          <Switch checked={!!cfg.demo_mode_skip_access} onCheckedChange={v => set('demo_mode_skip_access', v)} />
         </div>
       </div>
     </div>

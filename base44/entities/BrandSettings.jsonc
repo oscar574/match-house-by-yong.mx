@@ -38,6 +38,10 @@
     "require_whatsapp_verification": {
       "type": "boolean",
       "default": false
+    },
+    "demo_mode_skip_access": {
+      "type": "boolean",
+      "default": false
     }
   },
   "required": [],

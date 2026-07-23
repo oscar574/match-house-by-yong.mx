@@ -5,6 +5,8 @@ import { ArrowRight, Sparkles, BarChart3, Users, Calendar, LayoutDashboard, Pale
 import LatitudLogo from '@/components/LatitudLogo';
 import { validateClientSession, needsOnboarding } from '@/lib/clientSession';
 import { useBrand } from '@/lib/BrandSettingsContext';
+import { base44 } from '@/api/base44Client';
+import { isDemoSkipAccess, ensureDemoClient } from '@/lib/demoAccess';
 
 const VALUES = [
   { icon: Sparkles, title: 'Match inteligente de propiedades', desc: 'Casas que encajan contigo' },
@@ -39,6 +41,26 @@ export default function Welcome() {
       setChecking(false);
     })();
   }, []);
+
+  // Main CTA: in demo mode, create/reuse a demo client and go to onboarding;
+  // otherwise send to /access for normal phone capture. If a session already
+  // exists, route to onboarding/discover as today.
+  const handleEntry = async () => {
+    const clientId = localStorage.getItem('latitud_client_id');
+    if (clientId) {
+      try {
+        const c = await base44.entities.Client.get(clientId);
+        navigate(needsOnboarding(c) ? '/onboarding' : '/discover', { replace: true });
+        return;
+      } catch (e) { /* fall through to demo/access */ }
+    }
+    if (await isDemoSkipAccess()) {
+      await ensureDemoClient();
+      navigate('/onboarding', { replace: true });
+    } else {
+      navigate('/access');
+    }
+  };
 
   if (checking) {
     return (
@@ -82,11 +104,9 @@ export default function Welcome() {
               {brand.tagline_secundaria || 'Una experiencia privada que entiende tu estilo de vida, tu presupuesto y tu momento — para mostrarte solo propiedades a tu altura.'}
             </p>
 
-            <Link to="/access">
-              <motion.button whileTap={{ scale: 0.97 }} className="w-full text-latitud-black font-semibold py-4 rounded-xl text-lg active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow" style={{ backgroundColor: brand.accent_color }}>
-                Encontrar mi match <ArrowRight size={20} />
-              </motion.button>
-            </Link>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleEntry} className="w-full text-latitud-black font-semibold py-4 rounded-xl text-lg active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow" style={{ backgroundColor: brand.accent_color }}>
+              Encontrar mi match <ArrowRight size={20} />
+            </motion.button>
 
             <p className="text-white/35 text-xs text-center mt-4">No spam. No es un portal. Solo casas seleccionadas para ti.</p>
 

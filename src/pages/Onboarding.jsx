@@ -7,6 +7,7 @@ import LatitudLogo from '@/components/LatitudLogo';
 import { countAvailable, availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
 import { formatThousands, parseThousands } from '@/lib/priceFormat';
 import { formatPhoneDisplay } from '@/lib/phoneNormalize';
+import { isDemoSkipAccess, ensureDemoClient } from '@/lib/demoAccess';
 
 const OPERATIONS = [
   { value: 'Comprar', label: 'Comprar', desc: 'Encuentra tu próxima casa' },
@@ -45,8 +46,16 @@ export default function Onboarding() {
       // Onboarding now completes an existing client created by the OTP flow
       // (or pre-registered by an advisor). It must NOT create a new verified
       // record — phone verification happens in the OTP flow.
-      const clientId = localStorage.getItem('latitud_client_id');
-      if (!clientId) { navigate('/access', { replace: true }); return; }
+      let clientId = localStorage.getItem('latitud_client_id');
+      if (!clientId) {
+        // Demo mode: create a demo client and continue onboarding. Otherwise
+        // require phone capture via /access.
+        if (await isDemoSkipAccess()) {
+          clientId = await ensureDemoClient();
+        } else {
+          navigate('/access', { replace: true }); return;
+        }
+      }
       try {
         const client = await base44.entities.Client.get(clientId);
         if (client) {
