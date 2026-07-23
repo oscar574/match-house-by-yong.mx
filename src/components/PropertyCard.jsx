@@ -1,7 +1,7 @@
 import React, { useState, useRef, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Bed, Bath, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, MessageCircle, Star } from 'lucide-react';
+import { Bed, Bath, Maximize, Ruler, MapPin, ChevronLeft, ChevronRight, Sparkles, MessageCircle, Star } from 'lucide-react';
 import { formatPriceExact } from '@/lib/matchEngine';
 import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getPropertyPhotos, getFallbackImage } from '@/lib/propertyImages';
@@ -198,6 +198,12 @@ export default function PropertyCard({ property, matchPercentage, matchReason, i
             <div className="flex items-center gap-1">
               <Maximize size={14} />
               <span>{property.construction_area}m²</span>
+            </div>
+          )}
+          {property.land_area > 0 && (
+            <div className="flex items-center gap-1">
+              <Ruler size={14} />
+              <span>{property.land_area}m²</span>
             </div>
           )}
         </div>

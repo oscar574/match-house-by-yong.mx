@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Heart, MapPin, Bed, Bath, Maximize, Trash2, Sparkles, Calendar, MessageCircle, Compass, Star } from 'lucide-react';
+import { Heart, MapPin, Bed, Bath, Maximize, Ruler, Trash2, Sparkles, Calendar, MessageCircle, Compass, Star } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
@@ -221,6 +221,7 @@ export default function Favorites() {
                       {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={13} /> {property.bedrooms}</span>}
                       {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={13} /> {property.bathrooms}</span>}
                       {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={13} /> {property.construction_area} m²</span>}
+                      {property.land_area > 0 && <span className="flex items-center gap-1"><Ruler size={13} /> {property.land_area} m²</span>}
                     </div>
                     <div className="flex gap-2">
                       <button

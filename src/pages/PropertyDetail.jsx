@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, MessageCircle } from 'lucide-react';
+import { ArrowLeft, Heart, Calendar, Share2, Bed, Bath, Car, Maximize, Ruler, MapPin, ChevronLeft, ChevronRight, Sparkles, Check, MessageCircle } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
@@ -368,6 +368,13 @@ export default function PropertyDetail() {
                 <Car size={18} className="text-latitud-orange mx-auto mb-1" />
                 <p className="text-sm font-semibold text-latitud-black">{property.parking_spaces}</p>
                 <p className="text-[10px] text-latitud-gray">Estac.</p>
+              </div>
+            )}
+            {property.land_area > 0 && (
+              <div className="bg-latitud-light rounded-xl p-3 text-center">
+                <Ruler size={18} className="text-latitud-orange mx-auto mb-1" />
+                <p className="text-sm font-semibold text-latitud-black">{property.land_area}</p>
+                <p className="text-[10px] text-latitud-gray">m² terreno</p>
               </div>
             )}
           </div>
