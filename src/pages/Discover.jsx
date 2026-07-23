@@ -32,6 +32,7 @@ export default function Discover() {
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
   const [curatedProperties, setCuratedProperties] = useState([]);
+  const [carouselPool, setCarouselPool] = useState([]);
   const { toast } = useToast();
 
   // Progressive loading refs
@@ -108,6 +109,17 @@ export default function Discover() {
     exhaustedRef.current = first.length < 50;
     countDuplicates(first);
 
+    // Carousel pool: ALL visible properties (including already-reacted ones),
+    // so the explore carousels stay populated even after the swipe deck is exhausted.
+    const pool = first
+      .filter(isBuyerVisible)
+      .filter(p => p.is_duplicate !== true)
+      .map(p => {
+        const match = calculateMatch(p, clientData);
+        return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
+      });
+    setCarouselPool(pool);
+
     const deck = enrichAndFilter(first, clientData);
     setProperties(deck);
     setCurrentIndex(0);
@@ -129,6 +141,16 @@ export default function Discover() {
       } else {
         more.forEach(p => fetchedIdsRef.current.add(p.id));
         if (more.length < 50) exhaustedRef.current = true;
+        // Append to the carousel pool too (visible, non-duplicate), regardless of
+        // whether they've been reacted to.
+        const morePool = more
+          .filter(isBuyerVisible)
+          .filter(p => p.is_duplicate !== true)
+          .map(p => {
+            const match = calculateMatch(p, clientRef.current);
+            return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
+          });
+        if (morePool.length > 0) setCarouselPool(prev => [...prev, ...morePool]);
         const newDeck = enrichAndFilter(more, clientRef.current);
         if (newDeck.length > 0) {
           emptyStreakRef.current = 0;
@@ -166,8 +188,12 @@ export default function Discover() {
   const currentProperty = swipeDeck[currentIndex];
 
   // Carousels — only in-zone properties (hard filter). No English subtitles.
+  // Carousel pool: all visible properties matching the client's hard filters,
+  // including already-reacted ones, so carousels never empty out.
+  const carouselInZone = useMemo(() => partitionByClientPreferences(carouselPool, client).inZone, [carouselPool, client]);
+
   const carousels = useMemo(() => {
-    const pool = inZone;
+    const pool = carouselInZone;
     if (pool.length === 0) return [];
 
     const shuffle = (arr) => {
@@ -215,7 +241,7 @@ export default function Discover() {
       { title: 'Con alberca', properties: build(withPool, { random: true }) },
       { title: 'Ideales para invertir', properties: build(investments, { random: true }) }
     ].filter(c => c.properties.length > 0);
-  }, [inZone, client]);
+  }, [carouselInZone, client]);
 
   const showOutOfZone = inZone.length < 10 && outOfZone.length > 0;
 
