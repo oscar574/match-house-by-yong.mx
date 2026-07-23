@@ -135,7 +135,9 @@ export default function Discover() {
           setProperties(prev => [...prev, ...newDeck]);
         } else {
           emptyStreakRef.current += 1;
-          if (emptyStreakRef.current >= 10) exhaustedRef.current = true;
+          // Only give up after scanning the full inventory (~5,000+ props),
+          // not after a few empty batches of 50.
+          if (emptyStreakRef.current >= 120) exhaustedRef.current = true;
         }
       }
     } catch (e) { /* ignore transient */ }
@@ -313,19 +315,16 @@ export default function Discover() {
   const handleVisit = () => setShowVisit(true);
 
   const onPrefsSaved = async () => {
-    // Refetch the client so the hard filters (zones/budget/operation/bedrooms)
-    // re-apply immediately, and reset the deck to the top.
-    const clientId = localStorage.getItem('latitud_client_id');
-    if (clientId) {
-      try {
-        const c = await base44.entities.Client.get(clientId);
-        setClient(c);
-        clientRef.current = c;
-        setLeadScore(c.lead_score || 0);
-      } catch (e) { /* ignore */ }
-    }
-    setCurrentIndex(0);
+    // Reset the pagination caches and re-scan the FULL inventory with the new
+    // zones/preferences, instead of keeping the stale partial result.
+    exhaustedRef.current = false;
+    fetchedIdsRef.current = new Set();
+    emptyStreakRef.current = 0;
+    curatedIdsSetRef.current = new Set();
+    setCuratedProperties([]);
     setDirection(0);
+    setLoading(true);
+    await loadData();
     toast({ title: 'Preferencias actualizadas', description: 'Tu búsqueda se refiltró.' });
   };
 
@@ -431,17 +430,9 @@ export default function Discover() {
           </div>
         </div>
       ) : (
-        <div className="px-6 py-20 text-center">
-          <div className="w-16 h-16 rounded-full bg-latitud-orange/10 flex items-center justify-center mb-4 mx-auto">
-            <Heart size={28} className="text-latitud-orange" />
-          </div>
-          <h3 className="font-heading text-xl text-white mb-2">Has visto todas las propiedades de tu zona</h3>
-          <p className="text-white/50 text-sm mb-6">Estamos buscando más opciones para ti. Ajusta tus preferencias para ver otras zonas.</p>
-          <div className="flex flex-col items-center gap-3">
-            <button onClick={() => setShowPrefs(true)} className="bg-latitud-orange text-white font-semibold px-8 py-3 rounded-xl">Ajustar preferencias</button>
-            <button onClick={() => navigate('/favorites')} className="text-white/70 font-medium px-8 py-3 rounded-xl border border-white/20">Ver mis favoritas</button>
-          </div>
-        </div>
+        <p className="px-4 pt-6 pb-2 text-center text-xs text-white/40">
+          Has visto todas las propiedades disponibles en tu zona de interés — sigue explorando abajo
+        </p>
       )}
 
       {/* Netflix-style carousels (in-zone only) */}

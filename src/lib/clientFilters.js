@@ -18,9 +18,15 @@ export function getPreferredZones(client) {
 
 export function propertyInPreferredZone(p, zones) {
   if (!zones || zones.length === 0) return true;
-  const z = String(p.zone || '').trim();
-  const c = String(p.city || '').trim();
-  return zones.includes(z) || zones.includes(c);
+  // Normalize both sides (lowercase, strip accents, trim) so differences in
+  // casing or accents don't silently break the zone/city match.
+  const norm = (s) => String(s || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').trim();
+  const z = norm(p.zone);
+  const c = norm(p.city);
+  return zones.some(zone => {
+    const zn = norm(zone);
+    return zn === z || zn === c;
+  });
 }
 
 export function operationForClient(client) {

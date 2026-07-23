@@ -37,8 +37,20 @@ export default function SearchPreferencesModal({ open, onClose, client, onSaved 
     setZoneQuery('');
     (async () => {
       try {
-        const props = await base44.entities.Property.list('-created_date', 1000);
-        setAvailableZones(availableZonesFromProperties(props));
+        // Page through the FULL inventory so the zone picker reflects every
+        // zone actually available, not just the most recent 1,000.
+        const all = [];
+        const seen = new Set();
+        for (let pages = 0; pages < 30; pages++) {
+          const batch = seen.size === 0
+            ? await base44.entities.Property.list('-created_date', 1000)
+            : await base44.entities.Property.filter({ id: { $nin: Array.from(seen) } }, '-created_date', 1000);
+          if (!batch || batch.length === 0) break;
+          batch.forEach(p => seen.add(p.id));
+          all.push(...batch);
+          if (batch.length < 1000) break;
+        }
+        setAvailableZones(availableZonesFromProperties(all));
       } catch (e) { /* ignore */ }
     })();
   }, [open, client]);
