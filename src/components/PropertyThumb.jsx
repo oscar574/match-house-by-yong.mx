@@ -51,7 +51,7 @@ export default function PropertyThumb({ property, matchPercentage }) {
         <div className="flex items-center gap-2.5 text-white/80 text-[11px]">
           {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={11} /> {property.bedrooms}</span>}
           {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={11} /> {property.bathrooms}</span>}
-          {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={11} /> {property.construction_area} m²</span>}
+          {(property.construction_area || property.construction_m2) > 0 && <span className="flex items-center gap-1"><Maximize size={11} /> {property.construction_area || property.construction_m2} m²</span>}
         </div>
       </div>
     </motion.div>

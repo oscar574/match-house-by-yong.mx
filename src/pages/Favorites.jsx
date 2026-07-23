@@ -220,8 +220,8 @@ export default function Favorites() {
                     <div className="flex items-center gap-4 text-white/70 text-xs mb-4">
                       {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={13} /> {property.bedrooms}</span>}
                       {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={13} /> {property.bathrooms}</span>}
-                      {property.construction_area > 0 && <span className="flex items-center gap-1"><Maximize size={13} /> {property.construction_area} m²</span>}
-                      {property.land_area > 0 && <span className="flex items-center gap-1"><Ruler size={13} /> {property.land_area} m²</span>}
+                      {(property.construction_area || property.construction_m2) > 0 && <span className="flex items-center gap-1"><Maximize size={13} /> {property.construction_area || property.construction_m2} m²</span>}
+                      {(property.land_area || property.land_m2) > 0 && <span className="flex items-center gap-1"><Ruler size={13} /> {property.land_area || property.land_m2} m²</span>}
                     </div>
                     <div className="flex gap-2">
                       <button

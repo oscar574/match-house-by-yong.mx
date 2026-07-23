@@ -194,16 +194,16 @@ export default function PropertyCard({ property, matchPercentage, matchReason, i
               <span>{property.bathrooms}</span>
             </div>
           )}
-          {property.construction_area > 0 && (
+          {(property.construction_area || property.construction_m2) > 0 && (
             <div className="flex items-center gap-1">
               <Maximize size={14} />
-              <span>{property.construction_area}m²</span>
+              <span>{property.construction_area || property.construction_m2}m²</span>
             </div>
           )}
-          {property.land_area > 0 && (
+          {(property.land_area || property.land_m2) > 0 && (
             <div className="flex items-center gap-1">
               <Ruler size={14} />
-              <span>{property.land_area}m²</span>
+              <span>{property.land_area || property.land_m2}m²</span>
             </div>
           )}
         </div>

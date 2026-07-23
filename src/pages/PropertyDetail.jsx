@@ -356,10 +356,10 @@ export default function PropertyDetail() {
                 <p className="text-[10px] text-latitud-gray">Baños</p>
               </div>
             )}
-            {property.construction_area > 0 && (
+            {(property.construction_area || property.construction_m2) > 0 && (
               <div className="bg-latitud-light rounded-xl p-3 text-center">
                 <Maximize size={18} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-sm font-semibold text-latitud-black">{property.construction_area}</p>
+                <p className="text-sm font-semibold text-latitud-black">{property.construction_area || property.construction_m2}</p>
                 <p className="text-[10px] text-latitud-gray">m² const.</p>
               </div>
             )}
@@ -370,10 +370,10 @@ export default function PropertyDetail() {
                 <p className="text-[10px] text-latitud-gray">Estac.</p>
               </div>
             )}
-            {property.land_area > 0 && (
+            {(property.land_area || property.land_m2) > 0 && (
               <div className="bg-latitud-light rounded-xl p-3 text-center">
                 <Ruler size={18} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-sm font-semibold text-latitud-black">{property.land_area}</p>
+                <p className="text-sm font-semibold text-latitud-black">{property.land_area || property.land_m2}</p>
                 <p className="text-[10px] text-latitud-gray">m² terreno</p>
               </div>
             )}
@@ -427,16 +427,16 @@ export default function PropertyDetail() {
 
           {/* Extra details */}
           <div className="space-y-0 mb-2">
-            {property.land_area > 0 && (
+            {(property.land_area || property.land_m2) > 0 && (
               <div className="flex items-center justify-between py-3 border-t border-gray-100">
                 <span className="text-sm text-latitud-gray">Terreno</span>
-                <span className="text-sm font-medium text-latitud-black">{property.land_area} m²</span>
+                <span className="text-sm font-medium text-latitud-black">{property.land_area || property.land_m2} m²</span>
               </div>
             )}
-            {property.construction_area > 0 && (
+            {(property.construction_area || property.construction_m2) > 0 && (
               <div className="flex items-center justify-between py-3 border-t border-gray-100">
                 <span className="text-sm text-latitud-gray">Construcción</span>
-                <span className="text-sm font-medium text-latitud-black">{property.construction_area} m²</span>
+                <span className="text-sm font-medium text-latitud-black">{property.construction_area || property.construction_m2} m²</span>
               </div>
             )}
             {property.year_built > 0 && (

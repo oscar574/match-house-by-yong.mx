@@ -325,7 +325,7 @@ export default function AdminProperties() {
                     <span className={`text-[10px] font-medium px-2 py-0.5 rounded-full ${
                       commissionOk ? 'bg-green-50 text-green-600' : 'bg-gray-100 text-latitud-gray'
                     }`}>{p.commission_status || 'Sin comisión'}</span>
-                    <span className="text-[10px] text-latitud-gray">{p.construction_area || 0}m²</span>
+                    <span className="text-[10px] text-latitud-gray">{p.construction_area || p.construction_m2 || 0}m²</span>
                     <span className="text-[10px] text-latitud-gray">{p.bedrooms || 0} rec</span>
                   </div>
 
