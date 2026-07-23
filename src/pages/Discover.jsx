@@ -31,6 +31,7 @@ export default function Discover() {
   const [reactionCount, setReactionCount] = useState(0);
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
+  const [likedCount, setLikedCount] = useState(0);
   const [curatedProperties, setCuratedProperties] = useState([]);
   const [carouselPool, setCarouselPool] = useState([]);
   const { toast } = useToast();
@@ -87,6 +88,7 @@ export default function Discover() {
     if (clientId) {
       const reactions = await base44.entities.Reaction.filter({ client_id: clientId });
       reactedIds = reactions.map(r => r.property_id);
+      setLikedCount([...new Set(reactions.filter(r => r.reaction_type === 'like').map(r => r.property_id))].length);
     }
     reactedIdsRef.current = new Set(reactedIds);
 
@@ -376,9 +378,9 @@ export default function Discover() {
           </button>
           <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors relative">
             <Heart size={20} />
-            {client?.liked_count > 0 && (
+            {likedCount > 0 && (
               <span className="absolute -top-1.5 -right-1.5 bg-latitud-orange text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
-                {client.liked_count}
+                {likedCount}
               </span>
             )}
           </button>

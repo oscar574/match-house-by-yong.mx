@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
 import BottomNav from '@/components/BottomNav';
 import SearchPreferencesModal from '@/components/SearchPreferencesModal';
+import { getClientFavorites } from '@/lib/favoritesCount';
 
 function bedroomsLabel(client) {
   const min = client?.preferred_bedrooms;
@@ -18,7 +19,7 @@ function bedroomsLabel(client) {
 export default function ClientProfile() {
   const navigate = useNavigate();
   const [client, setClient] = useState(null);
-  const [reactions, setReactions] = useState([]);
+  const [favorites, setFavorites] = useState(null);
   const [loading, setLoading] = useState(true);
   const [showPrefs, setShowPrefs] = useState(false);
 
@@ -30,13 +31,13 @@ export default function ClientProfile() {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) { setLoading(false); return; }
 
-    const [clientData, allReactions] = await Promise.all([
+    const [clientData, fav] = await Promise.all([
       base44.entities.Client.get(clientId),
-      base44.entities.Reaction.filter({ client_id: clientId })
+      getClientFavorites(clientId)
     ]);
 
     setClient(clientData);
-    setReactions(allReactions);
+    setFavorites(fav);
     setLoading(false);
   };
 
@@ -66,9 +67,9 @@ export default function ClientProfile() {
     );
   }
 
-  const likes = reactions.filter(r => r.reaction_type === 'like');
-  const dislikes = reactions.filter(r => r.reaction_type === 'dislike');
-  const visitReqs = reactions.filter(r => r.reaction_type === 'visit_request');
+  const likes = favorites?.likedIds?.length || 0;
+  const dislikes = favorites?.dislikedIds?.length || 0;
+  const visitReqs = favorites?.visitRequestIds?.length || 0;
 
   return (
     <div className="min-h-screen bg-latitud-light pb-28">
@@ -98,17 +99,17 @@ export default function ClientProfile() {
         <div className="grid grid-cols-3 gap-3">
           <button onClick={() => navigate('/favorites')} className="bg-white rounded-xl p-3 text-center shadow-sm active:scale-95 transition-transform cursor-pointer">
             <Heart size={16} className="text-red-400 mx-auto mb-1" />
-            <p className="text-lg font-bold text-latitud-black">{likes.length}</p>
+            <p className="text-lg font-bold text-latitud-black">{likes}</p>
             <p className="text-[10px] text-latitud-gray">Me gusta</p>
           </button>
           <button onClick={() => navigate('/favorites?tab=disliked')} className="bg-white rounded-xl p-3 text-center shadow-sm active:scale-95 transition-transform cursor-pointer">
             <ThumbsDown size={16} className="text-latitud-gray mx-auto mb-1" />
-            <p className="text-lg font-bold text-latitud-black">{dislikes.length}</p>
+            <p className="text-lg font-bold text-latitud-black">{dislikes}</p>
             <p className="text-[10px] text-latitud-gray">No me interesa</p>
           </button>
           <div className="bg-white rounded-xl p-3 text-center shadow-sm">
             <Calendar size={16} className="text-latitud-orange mx-auto mb-1" />
-            <p className="text-lg font-bold text-latitud-black">{visitReqs.length}</p>
+            <p className="text-lg font-bold text-latitud-black">{visitReqs}</p>
             <p className="text-[10px] text-latitud-gray">Visitas</p>
           </div>
         </div>

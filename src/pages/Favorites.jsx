@@ -4,6 +4,7 @@ import { Heart, MapPin, Bed, Bath, Car, Maximize, Ruler, Trash2, Sparkles, Calen
 import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
+import { getClientFavorites } from '@/lib/favoritesCount';
 import { partitionByClientPreferences } from '@/lib/clientFilters';
 import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
@@ -18,6 +19,8 @@ export default function Favorites() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [likedProperties, setLikedProperties] = useState([]);
   const [dislikedProperties, setDislikedProperties] = useState([]);
+  const [likedTotal, setLikedTotal] = useState(0);
+  const [dislikedTotal, setDislikedTotal] = useState(0);
   const [alsoLike, setAlsoLike] = useState([]);
   const [curatedProperties, setCuratedProperties] = useState([]);
   const [client, setClient] = useState(null);
@@ -35,37 +38,47 @@ export default function Favorites() {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) { setLoading(false); return; }
 
-    const [clientData, likeReactions, dislikeReactions] = await Promise.all([
-      base44.entities.Client.get(clientId),
-      base44.entities.Reaction.filter({ client_id: clientId, reaction_type: 'like' }),
-      base44.entities.Reaction.filter({ client_id: clientId, reaction_type: 'dislike' })
-    ]);
+    const clientData = await base44.entities.Client.get(clientId);
     setClient(clientData);
 
-    const likedIds = [...new Set(likeReactions.map(r => r.property_id))];
-    const dislikedIds = [...new Set(dislikeReactions.map(r => r.property_id))];
+    const fav = await getClientFavorites(clientId);
 
-    // Fetch liked and disliked properties directly by ID, with no status filter,
-    // so the full set shows even when a property is no longer "Disponible".
-    const [likedProps, dislikedProps] = await Promise.all([
-      likedIds.length > 0 ? base44.entities.Property.filter({ id: { $in: likedIds } }) : [],
-      dislikedIds.length > 0 ? base44.entities.Property.filter({ id: { $in: dislikedIds } }) : []
-    ]);
+    // Clean up duplicate reactions (keep one per client+property).
+    if (fav.duplicateReactionIds.length > 0) {
+      try {
+        await base44.entities.Reaction.deleteMany({ id: { $in: fav.duplicateReactionIds } });
+      } catch (e) { /* ignore */ }
+    }
+
+    // Sync the stored counters with the real unique totals so they never drift.
+    if (clientData && (clientData.liked_count !== fav.likedIds.length || clientData.disliked_count !== fav.dislikedIds.length)) {
+      try {
+        const updated = await base44.entities.Client.update(clientId, {
+          liked_count: fav.likedIds.length,
+          disliked_count: fav.dislikedIds.length
+        });
+        setClient(prev => ({ ...prev, ...updated }));
+      } catch (e) { /* ignore */ }
+    }
+
+    setLikedTotal(fav.likedIds.length);
+    setDislikedTotal(fav.dislikedIds.length);
 
     const enrich = (p) => {
       const match = calculateMatch(p, clientData);
-      return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText };
+      return { ...p, _matchPercentage: match.percentage, _matchReason: match.reasonText, _available: isBuyerVisible(p) };
     };
     const sortByMatch = (a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0);
 
-    setLikedProperties(likedProps.filter(isBuyerVisible).map(enrich).sort(sortByMatch));
-    setDislikedProperties(dislikedProps.filter(isBuyerVisible).map(enrich).sort(sortByMatch));
+    // Show ALL liked/disliked properties (available + no longer available).
+    setLikedProperties(fav.likedProperties.map(enrich).sort(sortByMatch));
+    setDislikedProperties(fav.dislikedProperties.map(enrich).sort(sortByMatch));
 
     // Recommendations — separate query by zone, independent from favorites list.
     const available = await base44.entities.Property.filter({ status: 'Disponible' });
     const { inZone } = partitionByClientPreferences(available, clientData);
     const also = inZone
-      .filter(p => !likedIds.includes(p.id) && !dislikedIds.includes(p.id))
+      .filter(p => !fav.likedIds.includes(p.id) && !fav.dislikedIds.includes(p.id))
       .map(p => ({ ...p, _match: calculateMatch(p, clientData).percentage }))
       .sort((a, b) => (b._match || 0) - (a._match || 0))
       .slice(0, 8);
@@ -135,6 +148,7 @@ export default function Favorites() {
 
   const renderCard = (property, isDisliked) => {
     const cover = getCoverPhoto(property);
+    const unavailable = property._available === false;
     return (
       <div
         key={property.id}
@@ -146,15 +160,23 @@ export default function Favorites() {
             src={cover}
             alt={property.title}
             onError={(e) => { e.target.src = getFallbackImage(property); }}
-            className="w-full h-full object-cover"
+            className={`w-full h-full object-cover ${unavailable ? 'opacity-50 grayscale' : ''}`}
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          <div className="absolute top-3 right-3">
-            <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-              {property._matchPercentage}% match
-            </span>
-          </div>
-          {property._matchReason && (
+          {unavailable ? (
+            <div className="absolute top-3 right-3">
+              <span className="bg-gray-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                Ya no disponible
+              </span>
+            </div>
+          ) : (
+            <div className="absolute top-3 right-3">
+              <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+                {property._matchPercentage}% match
+              </span>
+            </div>
+          )}
+          {!unavailable && property._matchReason && (
             <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
               <Sparkles size={12} className="text-latitud-orange mt-0.5 shrink-0" />
               <p className="text-white/90 text-[11px] leading-snug">{property._matchReason}</p>
@@ -182,15 +204,17 @@ export default function Favorites() {
             >
               Ver detalle
             </button>
-            <a
-              href={buildPropertyWhatsAppUrl(property)}
-              target="_blank"
-              rel="noreferrer"
-              onClick={(e) => e.stopPropagation()}
-              className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-[#25D366] text-white flex items-center justify-center gap-1.5"
-            >
-              <MessageCircle size={14} /> WhatsApp
-            </a>
+            {!unavailable && (
+              <a
+                href={buildPropertyWhatsAppUrl(property)}
+                target="_blank"
+                rel="noreferrer"
+                onClick={(e) => e.stopPropagation()}
+                className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-[#25D366] text-white flex items-center justify-center gap-1.5"
+              >
+                <MessageCircle size={14} /> WhatsApp
+              </a>
+            )}
             {isDisliked ? (
               <button
                 onClick={(e) => { e.stopPropagation(); moveToLiked(property); }}
@@ -221,7 +245,7 @@ export default function Favorites() {
     );
   }
 
-  const atLimit = likedProperties.length >= 20;
+  const atLimit = likedTotal >= 20;
 
   return (
     <div className="min-h-screen bg-latitud-black pb-28">
@@ -254,13 +278,13 @@ export default function Favorites() {
             onClick={() => switchTab('liked')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'liked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
           >
-            Me gustan {likedProperties.length > 0 ? `· ${likedProperties.length}` : ''}
+            Me gustan {likedTotal > 0 ? `· ${likedTotal}` : ''}
           </button>
           <button
             onClick={() => switchTab('disliked')}
             className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'disliked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
           >
-            No me interesan {dislikedProperties.length > 0 ? `· ${dislikedProperties.length}` : ''}
+            No me interesan {dislikedTotal > 0 ? `· ${dislikedTotal}` : ''}
           </button>
         </div>
       </div>
@@ -299,7 +323,7 @@ export default function Favorites() {
                   </div>
                   <div>
                     <Heart size={14} className="text-latitud-orange mx-auto mb-0.5" />
-                    <span className="text-[11px] text-white font-semibold leading-tight block">{likedProperties.length} guardadas</span>
+                    <span className="text-[11px] text-white font-semibold leading-tight block">{likedTotal} guardadas</span>
                     <span className="text-[9px] text-white/40">Selección</span>
                   </div>
                 </div>
