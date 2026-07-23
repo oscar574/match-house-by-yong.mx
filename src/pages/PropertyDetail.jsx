@@ -356,18 +356,18 @@ export default function PropertyDetail() {
                 <p className="text-[10px] text-latitud-gray">Baños</p>
               </div>
             )}
-            {(property.construction_area || property.construction_m2) > 0 && (
-              <div className="bg-latitud-light rounded-xl p-3 text-center">
-                <Maximize size={18} className="text-latitud-orange mx-auto mb-1" />
-                <p className="text-sm font-semibold text-latitud-black">{property.construction_area || property.construction_m2}</p>
-                <p className="text-[10px] text-latitud-gray">m² const.</p>
-              </div>
-            )}
             {property.parking_spaces > 0 && (
               <div className="bg-latitud-light rounded-xl p-3 text-center">
                 <Car size={18} className="text-latitud-orange mx-auto mb-1" />
                 <p className="text-sm font-semibold text-latitud-black">{property.parking_spaces}</p>
                 <p className="text-[10px] text-latitud-gray">Estac.</p>
+              </div>
+            )}
+            {(property.construction_area || property.construction_m2) > 0 && (
+              <div className="bg-latitud-light rounded-xl p-3 text-center">
+                <Maximize size={18} className="text-latitud-orange mx-auto mb-1" />
+                <p className="text-sm font-semibold text-latitud-black">{property.construction_area || property.construction_m2}</p>
+                <p className="text-[10px] text-latitud-gray">m² const.</p>
               </div>
             )}
             {(property.land_area || property.land_m2) > 0 && (

@@ -96,16 +96,16 @@ export default function ClientProfile() {
       <div className="px-4 py-4 space-y-4">
         {/* Stats */}
         <div className="grid grid-cols-3 gap-3">
-          <div className="bg-white rounded-xl p-3 text-center shadow-sm">
+          <button onClick={() => navigate('/favorites')} className="bg-white rounded-xl p-3 text-center shadow-sm active:scale-95 transition-transform cursor-pointer">
             <Heart size={16} className="text-red-400 mx-auto mb-1" />
             <p className="text-lg font-bold text-latitud-black">{likes.length}</p>
             <p className="text-[10px] text-latitud-gray">Me gusta</p>
-          </div>
-          <div className="bg-white rounded-xl p-3 text-center shadow-sm">
+          </button>
+          <button onClick={() => navigate('/favorites?tab=disliked')} className="bg-white rounded-xl p-3 text-center shadow-sm active:scale-95 transition-transform cursor-pointer">
             <ThumbsDown size={16} className="text-latitud-gray mx-auto mb-1" />
             <p className="text-lg font-bold text-latitud-black">{dislikes.length}</p>
             <p className="text-[10px] text-latitud-gray">No me interesa</p>
-          </div>
+          </button>
           <div className="bg-white rounded-xl p-3 text-center shadow-sm">
             <Calendar size={16} className="text-latitud-orange mx-auto mb-1" />
             <p className="text-lg font-bold text-latitud-black">{visitReqs.length}</p>
