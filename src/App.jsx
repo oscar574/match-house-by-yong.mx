@@ -61,7 +61,7 @@ function App() {
             <Route path="/reset-password" element={<ResetPassword />} />
 
             {/* Admin protected routes */}
-            <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} />}>
+            <Route element={<ProtectedRoute unauthenticatedElement={<Navigate to="/login" replace />} requiredRole="admin" />}>
               <Route element={<AdminLayout />}>
                 <Route path="/admin" element={<AdminDashboard />} />
                 <Route path="/admin/clients" element={<AdminClients />} />

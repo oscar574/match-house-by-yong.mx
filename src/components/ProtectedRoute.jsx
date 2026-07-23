@@ -1,7 +1,22 @@
 import { useEffect } from 'react';
-import { Outlet } from 'react-router-dom';
+import { Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/lib/AuthContext';
 import UserNotRegisteredError from '@/components/UserNotRegisteredError';
+
+const AccessDenied = () => {
+  const navigate = useNavigate();
+  return (
+    <div className="fixed inset-0 flex items-center justify-center px-6 bg-background">
+      <div className="text-center max-w-sm">
+        <h1 className="font-heading text-xl text-foreground mb-2">Acceso denegado</h1>
+        <p className="text-sm text-muted-foreground mb-6">No tienes permisos para acceder a esta sección.</p>
+        <button onClick={() => navigate('/discover', { replace: true })} className="px-5 py-3 rounded-xl bg-primary text-primary-foreground font-semibold text-sm">
+          Volver al inicio
+        </button>
+      </div>
+    </div>
+  );
+};
 
 const DefaultFallback = () => (
   <div className="fixed inset-0 flex items-center justify-center">
@@ -9,8 +24,8 @@ const DefaultFallback = () => (
   </div>
 );
 
-export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement }) {
-  const { isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();
+export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthenticatedElement, requiredRole }) {
+  const { user, isAuthenticated, isLoadingAuth, authChecked, authError, checkUserAuth } = useAuth();
 
   useEffect(() => {
     if (!authChecked && !isLoadingAuth) {
@@ -31,6 +46,10 @@ export default function ProtectedRoute({ fallback = <DefaultFallback />, unauthe
 
   if (!isAuthenticated) {
     return unauthenticatedElement;
+  }
+
+  if (requiredRole && user?.role !== requiredRole) {
+    return <AccessDenied />;
   }
 
   return <Outlet />;
