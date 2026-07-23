@@ -225,6 +225,29 @@
     },
     "duplicate_of": {
       "type": "string"
+    },
+    "app_opens_count": {
+      "type": "number",
+      "default": 0
+    },
+    "first_seen_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "last_seen_at": {
+      "type": "string",
+      "format": "date-time"
+    },
+    "active_days_count": {
+      "type": "number",
+      "default": 0
+    },
+    "app_open_history": {
+      "type": "array",
+      "items": {
+        "type": "string",
+        "format": "date-time"
+      }
     }
   },
   "required": [

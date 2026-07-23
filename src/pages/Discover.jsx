@@ -17,6 +17,7 @@ import { partitionByClientPreferences } from '@/lib/clientFilters';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 import { useToast } from '@/components/ui/use-toast';
+import { trackAppOpen } from '@/lib/sessionTracking';
 
 export default function Discover() {
   const navigate = useNavigate();
@@ -44,6 +45,7 @@ export default function Discover() {
   const loadingMoreRef = useRef(false);
   const emptyStreakRef = useRef(0);
   const clientRef = useRef(null);
+  const trackedRef = useRef(false);
   const curatedIdsSetRef = useRef(new Set());
 
   useEffect(() => {
@@ -81,6 +83,10 @@ export default function Discover() {
         setClient(clientData);
         setLeadScore(clientData.lead_score || 0);
       } catch (e) { /* ignore */ }
+      if (!trackedRef.current) {
+        trackedRef.current = true;
+        trackAppOpen(clientId);
+      }
     }
     clientRef.current = clientData;
 

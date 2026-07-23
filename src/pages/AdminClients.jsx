@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle, UserPlus, RefreshCw, Loader2, AlertTriangle, GitMerge, X, Trash2 } from 'lucide-react';
+import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle, UserPlus, RefreshCw, Loader2, AlertTriangle, GitMerge, X, Trash2, Activity } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
 import { clientOrigin, phoneKey } from '@/lib/clientOrigin';
@@ -8,7 +8,7 @@ import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 import RegisterClientModal from '@/components/RegisterClientModal';
 import { useToast } from '@/components/ui/use-toast';
 
-const LEAD_FILTERS = ['all', 'prioridad máxima', 'alta intención', 'lead calificado', 'interesado', 'explorando'];
+const LEAD_FILTERS = ['all', 'prioridad máxima', 'alta intención', 'lead calificado', 'interesado', 'explorando', 'active'];
 const ORIGIN_FILTERS = [
   { key: 'real', label: 'Cliente real' },
   { key: 'demo_mode', label: 'Modo demo' },
@@ -100,12 +100,15 @@ export default function AdminClients() {
   const filteredClients = clients.filter(c => {
     const matchesSearch = !search || c.name?.toLowerCase().includes(search.toLowerCase());
     let matchesFilter = true;
-    if (filter === 'all') matchesFilter = true;
+    if (filter === 'all' || filter === 'active') matchesFilter = true;
     else if (['real', 'demo_mode', 'demo_data'].includes(filter)) matchesFilter = clientOrigin(c).key === filter;
     else matchesFilter = c.lead_status === filter;
     const matchesMerged = showMerged || !c.duplicate_of;
     return matchesSearch && matchesFilter && matchesMerged;
   });
+  const sortedClients = filter === 'active'
+    ? [...filteredClients].sort((a, b) => (b.app_opens_count || 0) - (a.app_opens_count || 0))
+    : filteredClients;
 
   const normalizePhones = async () => {
     setNormalizing(true);
@@ -277,7 +280,7 @@ export default function AdminClients() {
               filter === f ? 'bg-latitud-orange text-white' : 'bg-white text-latitud-gray border border-gray-100'
             }`}
           >
-            {f === 'all' ? 'Todos' : getLeadStatusLabel(f)}
+            {f === 'all' ? 'Todos' : f === 'active' ? 'Más activos' : getLeadStatusLabel(f)}
           </button>
         ))}
       </div>
@@ -312,7 +315,7 @@ export default function AdminClients() {
           <div className="text-center py-12">
             <p className="text-sm text-latitud-gray">No hay clientes en esta categoría</p>
           </div>
-        ) : filteredClients.map(client => {
+        ) : sortedClients.map(client => {
           const score = client.buyer_intent_score ?? client.lead_score ?? 0;
           const origin = clientOrigin(client);
           return (
@@ -345,6 +348,7 @@ export default function AdminClients() {
               <span className="flex items-center gap-1"><Zap size={10} className="text-latitud-orange" /> {score} pts</span>
               <span className="flex items-center gap-1"><Heart size={10} className="text-red-400" /> {client.liked_count || 0} favoritas</span>
               <span className="flex items-center gap-1"><Calendar size={10} /> {client.visit_requests_count || 0} citas</span>
+              <span className="flex items-center gap-1"><Activity size={10} className="text-latitud-orange" /> {client.app_opens_count || 0} entradas</span>
               <span className="flex items-center gap-1"><Clock size={10} /> {timeAgo(client.last_activity_date)}</span>
             </div>
             <div className="flex items-center gap-2 flex-wrap">

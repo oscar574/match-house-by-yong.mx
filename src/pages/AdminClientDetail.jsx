@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send, Eye, Trash2, AlertTriangle, X, Loader2 } from 'lucide-react';
+import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send, Eye, Trash2, AlertTriangle, X, Loader2, Activity } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
@@ -225,6 +225,33 @@ export default function AdminClientDetail() {
           <p className="text-[10px] text-latitud-gray">Visitas</p>
         </div>
       </div>
+
+      {/* Actividad en la app */}
+      {(() => {
+        const sevenDaysAgo = Date.now() - 7 * 86400000;
+        const recentOpens = (client.app_open_history || []).filter(ts => new Date(ts).getTime() >= sevenDaysAgo).length;
+        const intensity = recentOpens >= 5 ? 'Alta' : recentOpens >= 2 ? 'Media' : 'Baja';
+        const intensityClass = recentOpens >= 5 ? 'bg-latitud-orange/10 text-latitud-orange' : recentOpens >= 2 ? 'bg-yellow-50 text-yellow-600' : 'bg-gray-100 text-latitud-gray';
+        const fmtDate = (iso) => iso ? new Date(iso).toLocaleDateString('es-MX', { day: 'numeric', month: 'short' }) : '—';
+        const fmtDateTime = (iso) => iso ? new Date(iso).toLocaleString('es-MX', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '—';
+        return (
+          <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+            <h3 className="font-semibold text-sm text-latitud-black mb-3 flex items-center gap-2">
+              <Activity size={14} className="text-latitud-orange" /> Actividad en la app
+            </h3>
+            <div className="grid grid-cols-2 gap-3 mb-3 text-sm">
+              <div><p className="text-xs text-latitud-gray">Total de entradas</p><p className="font-semibold text-latitud-black">{client.app_opens_count || 0}</p></div>
+              <div><p className="text-xs text-latitud-gray">Días activos</p><p className="font-semibold text-latitud-black">{client.active_days_count || 0}</p></div>
+              <div><p className="text-xs text-latitud-gray">Primera entrada</p><p className="font-semibold text-latitud-black">{fmtDate(client.first_seen_at)}</p></div>
+              <div><p className="text-xs text-latitud-gray">Última entrada</p><p className="font-semibold text-latitud-black">{fmtDateTime(client.last_seen_at)}</p></div>
+            </div>
+            <div className="flex items-center gap-2 text-xs">
+              <span className="text-latitud-gray">Intensidad (últimos 7 días):</span>
+              <span className={`font-semibold px-2 py-0.5 rounded-full ${intensityClass}`}>{intensity}</span>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Selección del comprador */}
       <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
