@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
 import { isBuyerVisible, evaluateBuyerVisibility, HIDDEN_REASON_LABELS } from '@/lib/commissionRules';
+import { clientOrigin } from '@/lib/clientOrigin';
 import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 import CuratedSelectionEditor from '@/components/CuratedSelectionEditor';
 
@@ -94,6 +95,7 @@ export default function AdminClientDetail() {
   const dislikes = reactions.filter(r => r.reaction_type === 'dislike');
   const propMap = Object.fromEntries(allProps.map(p => [p.id, p]));
   const unavailableLiked = likedProps.filter(p => !isBuyerVisible(p));
+  const origin = clientOrigin(client);
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -110,6 +112,9 @@ export default function AdminClientDetail() {
           'bg-gray-100 text-latitud-gray'
         }`}>
           {client.intent_score || 'Explorando'}
+        </span>
+        <span className={`text-[10px] font-semibold px-2.5 py-1 rounded-full ${origin.className}`}>
+          {origin.label}
         </span>
       </div>
 
