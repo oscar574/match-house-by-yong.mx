@@ -23,6 +23,30 @@
     "accent_color": {
       "type": "string"
     },
+    "theme_mode": {
+      "type": "string",
+      "enum": [
+        "Claro",
+        "Oscuro"
+      ],
+      "default": "Oscuro"
+    },
+    "background_color": {
+      "type": "string",
+      "default": "#050505"
+    },
+    "surface_color": {
+      "type": "string",
+      "default": "#F8F5EF"
+    },
+    "text_primary_color": {
+      "type": "string",
+      "default": "#FFFDF8"
+    },
+    "text_secondary_color": {
+      "type": "string",
+      "default": "#8A7A63"
+    },
     "whatsapp_number": {
       "type": "string"
     },

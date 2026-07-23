@@ -20,7 +20,12 @@ const DEFAULTS = {
   tagline_principal: brandConfig.taglines_es.primary,
   tagline_secundaria: brandConfig.taglines_es.secondary,
   require_whatsapp_verification: false,
-  demo_mode_skip_access: false
+  demo_mode_skip_access: false,
+  theme_mode: 'Oscuro',
+  background_color: '#050505',
+  surface_color: '#F8F5EF',
+  text_primary_color: '#FFFDF8',
+  text_secondary_color: '#8A7A63'
 };
 
 export default function AdminWhiteLabel() {
@@ -49,6 +54,21 @@ export default function AdminWhiteLabel() {
   }, []);
 
   const set = (k, v) => setCfg(p => ({ ...p, [k]: v }));
+
+  const applyThemePreset = (mode) => {
+    set('theme_mode', mode);
+    if (mode === 'Oscuro') {
+      set('background_color', '#050505');
+      set('surface_color', '#1A1A1A');
+      set('text_primary_color', '#FFFDF8');
+      set('text_secondary_color', '#8A7A63');
+    } else {
+      set('background_color', '#FFFDF8');
+      set('surface_color', '#F8F5EF');
+      set('text_primary_color', '#1A1A1A');
+      set('text_secondary_color', '#6B6155');
+    }
+  };
 
   const handleUpload = async (e) => {
     const file = e.target.files?.[0];
@@ -210,6 +230,30 @@ export default function AdminWhiteLabel() {
               <RotateCcw size={12} /> Restaurar imagen por defecto
             </button>
           )}
+        </div>
+
+        {/* Tema */}
+        <div>
+          <label className="text-xs font-medium text-latitud-gray uppercase tracking-wider mb-1.5 block">Tema</label>
+          <div className="flex gap-2">
+            <button onClick={() => applyThemePreset('Oscuro')} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${cfg.theme_mode === 'Oscuro' ? 'bg-latitud-orange text-white' : 'border border-gray-100 text-latitud-gray'}`}>Oscuro</button>
+            <button onClick={() => applyThemePreset('Claro')} className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${cfg.theme_mode === 'Claro' ? 'bg-latitud-orange text-white' : 'border border-gray-100 text-latitud-gray'}`}>Claro</button>
+          </div>
+        </div>
+        <ColorField label="Color de fondo" value={cfg.background_color} onChange={v => set('background_color', v)} />
+        <ColorField label="Color de superficie" value={cfg.surface_color} onChange={v => set('surface_color', v)} />
+        <ColorField label="Texto principal" value={cfg.text_primary_color} onChange={v => set('text_primary_color', v)} />
+        <ColorField label="Texto secundario" value={cfg.text_secondary_color} onChange={v => set('text_secondary_color', v)} />
+
+        {/* Vista previa del tema en vivo */}
+        <div className="rounded-2xl p-4" style={{ background: cfg.background_color }}>
+          <div className="rounded-xl p-3 mb-3" style={{ background: cfg.surface_color }}>
+            <p className="text-sm font-heading mb-1" style={{ color: cfg.text_primary_color }}>Título de ejemplo</p>
+            <p className="text-xs" style={{ color: cfg.text_secondary_color }}>Texto secundario de ejemplo</p>
+          </div>
+          <button className="px-4 py-2 rounded-lg text-xs font-semibold" style={{ background: cfg.accent_color, color: cfg.background_color }}>
+            Botón de acento
+          </button>
         </div>
 
         <ColorField label="Color primario (fondos oscuros)" value={cfg.primary_color} onChange={v => set('primary_color', v)} />

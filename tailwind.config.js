@@ -13,11 +13,11 @@ module.exports = {
   			background: 'hsl(var(--background))',
   			foreground: 'hsl(var(--foreground))',
   			latitud: {
-  				black: '#050505',
-  				orange: '#C9A45C',
-  				gray: '#8A7A63',
-  				light: '#F8F5EF',
-  				white: '#FFFDF8'
+  				black: 'var(--brand-bg)',
+  				orange: 'var(--brand-accent)',
+  				gray: 'var(--brand-muted)',
+  				light: 'var(--brand-surface)',
+  				white: 'var(--brand-text)'
   			},
   			card: {
   				DEFAULT: 'hsl(var(--card))',

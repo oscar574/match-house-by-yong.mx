@@ -31,6 +31,11 @@
     --chart-4: 38 40% 72%;
     --chart-5: 40 18% 92%;
     --radius: 0.75rem;
+    --brand-bg: #050505;
+    --brand-text: #FFFDF8;
+    --brand-surface: #F8F5EF;
+    --brand-muted: #8A7A63;
+    --brand-accent: #C9A45C;
     --font-heading: 'Sora', sans-serif;
     --font-body: 'Inter', sans-serif;
     --font-display: 'Sora', sans-serif;

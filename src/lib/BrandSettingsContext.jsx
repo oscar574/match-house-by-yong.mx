@@ -15,7 +15,12 @@ const DEFAULTS = {
   whatsapp_number: brandConfig.whatsapp_number,
   contact_email: brandConfig.contact_email || '',
   tagline_principal: brandConfig.taglines_es.primary,
-  tagline_secundaria: brandConfig.taglines_es.secondary
+  tagline_secundaria: brandConfig.taglines_es.secondary,
+  theme_mode: 'Oscuro',
+  background_color: '#050505',
+  surface_color: '#F8F5EF',
+  text_primary_color: '#FFFDF8',
+  text_secondary_color: '#8A7A63'
 };
 
 const BrandContext = createContext({ brand: DEFAULTS, refresh: () => {} });
@@ -27,6 +32,14 @@ export function BrandProvider({ children }) {
     const merged = { ...DEFAULTS, ...(settings || {}) };
     setBrand(merged);
     setActiveBrand(merged);
+    // Inject theme colors as CSS variables so Tailwind's latitud tokens
+    // (mapped to var(--brand-*)) reflect the saved white-label config.
+    const root = document.documentElement.style;
+    root.setProperty('--brand-bg', merged.background_color || '#050505');
+    root.setProperty('--brand-text', merged.text_primary_color || '#FFFDF8');
+    root.setProperty('--brand-surface', merged.surface_color || '#F8F5EF');
+    root.setProperty('--brand-muted', merged.text_secondary_color || '#8A7A63');
+    root.setProperty('--brand-accent', merged.accent_color || '#C9A45C');
     // Apply logo to favicon so the browser/tab reflects the white-label logo.
     if (merged.logo_url) {
       let link = document.querySelector("link[rel='icon']");
