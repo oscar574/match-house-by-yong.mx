@@ -5,6 +5,7 @@ import { base44 } from '@/api/base44Client';
 import { formatPriceExact, calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
 import { getClientFavorites } from '@/lib/favoritesCount';
+import { MAX_FAVORITES } from '@/lib/favoritesLimit';
 import { partitionByClientPreferences } from '@/lib/clientFilters';
 import { buildPropertyWhatsAppUrl } from '@/lib/brandConfig';
 import { getCoverPhoto, getFallbackImage } from '@/lib/propertyImages';
@@ -19,9 +20,6 @@ export default function Favorites() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [likedProperties, setLikedProperties] = useState([]);
   const [dislikedProperties, setDislikedProperties] = useState([]);
-  const [likedTotal, setLikedTotal] = useState(0);
-  const [dislikedTotal, setDislikedTotal] = useState(0);
-  const [unavailableLikedCount, setUnavailableLikedCount] = useState(0);
   const [alsoLike, setAlsoLike] = useState([]);
   const [curatedProperties, setCuratedProperties] = useState([]);
   const [client, setClient] = useState(null);
@@ -60,11 +58,11 @@ export default function Favorites() {
           disliked_count: fav.dislikedIds.length
         });
         setClient(prev => ({ ...prev, ...updated }));
-      } catch (e) { /* ignore */ }
+      } catch (e) {
+        console.error('Error al sincronizar contadores de favoritos', e);
+        toast({ title: 'Error', description: 'No se pudo sincronizar tu selección. Intenta de nuevo.' });
+      }
     }
-
-    setLikedTotal(fav.likedIds.length);
-    setDislikedTotal(fav.dislikedIds.length);
 
     const enrich = (p) => {
       const match = calculateMatch(p, clientData);
@@ -76,7 +74,6 @@ export default function Favorites() {
     const likedAll = fav.likedProperties.map(enrich);
     const likedAvailable = likedAll.filter(p => p._available);
     setLikedProperties(likedAvailable.sort(sortByMatch));
-    setUnavailableLikedCount(likedAll.length - likedAvailable.length);
     setDislikedProperties(fav.dislikedProperties.map(enrich).filter(p => p._available).sort(sortByMatch));
 
     // Recommendations — separate query by zone, independent from favorites list.
@@ -119,12 +116,19 @@ export default function Favorites() {
       });
       toast({ title: 'Propiedad eliminada de tu selección.' });
       loadFavorites();
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      console.error('Error al eliminar la propiedad de favoritos', e);
+      toast({ title: 'Error', description: 'No se pudo eliminar la propiedad. Intenta de nuevo.' });
+    }
   };
 
   const moveToLiked = async (property) => {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) return;
+    if (likedProperties.length >= MAX_FAVORITES) {
+      toast({ title: 'Límite alcanzado', description: `Ya tienes ${MAX_FAVORITES} propiedades guardadas. Elimina una de tu selección para poder mover esta.` });
+      return;
+    }
     try {
       const dislikeReactions = await base44.entities.Reaction.filter({ client_id: clientId, property_id: property.id, reaction_type: 'dislike' });
       await Promise.all(dislikeReactions.map(r =>
@@ -149,7 +153,10 @@ export default function Favorites() {
       });
       toast({ title: 'Propiedad movida a tu selección.' });
       loadFavorites();
-    } catch (e) { /* ignore */ }
+    } catch (e) {
+      console.error('Error al mover la propiedad a favoritos', e);
+      toast({ title: 'Error', description: 'No se pudo mover la propiedad. Intenta de nuevo.' });
+    }
   };
 
   const switchTab = (tab) => {
@@ -218,8 +225,9 @@ export default function Favorites() {
             {isDisliked ? (
               <button
                 onClick={(e) => { e.stopPropagation(); moveToLiked(property); }}
-                title="Mover a favoritos"
-                className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-latitud-orange text-white flex items-center justify-center"
+                disabled={atLimit}
+                title={atLimit ? 'Límite de favoritos alcanzado' : 'Mover a favoritos'}
+                className={`px-3 text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center ${atLimit ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-latitud-orange text-white'}`}
               >
                 <Heart size={14} />
               </button>
@@ -232,6 +240,9 @@ export default function Favorites() {
               </button>
             )}
           </div>
+          {isDisliked && atLimit && (
+            <p className="text-[10px] text-white/40 mt-2">Límite de favoritos alcanzado. Elimina una para mover esta.</p>
+          )}
         </div>
       </div>
     );
@@ -245,7 +256,7 @@ export default function Favorites() {
     );
   }
 
-  const atLimit = likedTotal >= 20;
+  const atLimit = likedProperties.length >= MAX_FAVORITES;
 
   return (
     <div className="min-h-screen bg-latitud-black pb-28">
@@ -270,10 +281,6 @@ export default function Favorites() {
               : 'Aún no tienes propiedades guardadas.'}
         </p>
       </div>
-
-      {activeTab === 'liked' && unavailableLikedCount > 0 && (
-        <p className="px-4 pt-1 text-xs text-white/40">{unavailableLikedCount} propiedades que guardaste ya no están publicadas. Tu asesor puede confirmarte si siguen a la venta.</p>
-      )}
 
       {/* Tabs */}
       <div className="px-4 pt-2 pb-1">
@@ -355,7 +362,7 @@ export default function Favorites() {
               <>
                 {atLimit && (
                   <div className="bg-[#E6D3A3]/15 border border-[#C9A45C]/30 rounded-xl p-3 text-center">
-                    <p className="text-[11px] text-[#E6D3A3]">Ya tienes 20 propiedades guardadas. Elimina alguna para agregar nuevas opciones.</p>
+                    <p className="text-[11px] text-[#E6D3A3]">Ya tienes {MAX_FAVORITES} propiedades guardadas. Elimina alguna para agregar nuevas opciones.</p>
                   </div>
                 )}
                 {likedProperties.map(property => renderCard(property, false))}

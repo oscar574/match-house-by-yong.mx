@@ -13,6 +13,7 @@ import BottomNav from '@/components/BottomNav';
 import LatitudLogo from '@/components/LatitudLogo';
 import { calculateMatch } from '@/lib/matchEngine';
 import { isBuyerVisible } from '@/lib/commissionRules';
+import { MAX_FAVORITES } from '@/lib/favoritesLimit';
 import { partitionByClientPreferences } from '@/lib/clientFilters';
 import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
@@ -33,6 +34,7 @@ export default function Discover() {
   const [direction, setDirection] = useState(0);
   const [leadScore, setLeadScore] = useState(0);
   const [likedCount, setLikedCount] = useState(0);
+  const [availableLikedCount, setAvailableLikedCount] = useState(0);
   const [curatedProperties, setCuratedProperties] = useState([]);
   const [carouselPool, setCarouselPool] = useState([]);
   const { toast } = useToast();
@@ -94,7 +96,14 @@ export default function Discover() {
     if (clientId) {
       const reactions = await base44.entities.Reaction.filter({ client_id: clientId });
       reactedIds = reactions.map(r => r.property_id);
-      setLikedCount([...new Set(reactions.filter(r => r.reaction_type === 'like').map(r => r.property_id))].length);
+      const likedIds = [...new Set(reactions.filter(r => r.reaction_type === 'like').map(r => r.property_id))];
+      setLikedCount(likedIds.length);
+      if (likedIds.length > 0) {
+        const likedPropsFetched = await base44.entities.Property.filter({ id: { $in: likedIds } });
+        setAvailableLikedCount(likedPropsFetched.filter(isBuyerVisible).length);
+      } else {
+        setAvailableLikedCount(0);
+      }
     }
     reactedIdsRef.current = new Set(reactedIds);
 
@@ -258,8 +267,8 @@ export default function Discover() {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) return;
 
-    if (type === 'like' && (client?.liked_count || 0) >= 20) {
-      toast({ title: 'Límite alcanzado', description: 'Ya tienes 20 propiedades guardadas. Elimina alguna para agregar nuevas opciones.' });
+    if (type === 'like' && availableLikedCount >= MAX_FAVORITES) {
+      toast({ title: 'Límite alcanzado', description: `Ya tienes ${MAX_FAVORITES} propiedades guardadas. Elimina alguna para agregar nuevas opciones.` });
       return;
     }
 
@@ -285,6 +294,7 @@ export default function Discover() {
       action = 'SAVE_FAVORITE';
       if (newLiked === 3) bonusAction = 'SAVE_3_FAVORITES';
       if (newLiked === 5) bonusAction = 'SAVE_5_FAVORITES';
+      setAvailableLikedCount(c => c + 1);
     }
     if (type === 'dislike') {
       updates.disliked_count = (client?.disliked_count || 0) + 1;
