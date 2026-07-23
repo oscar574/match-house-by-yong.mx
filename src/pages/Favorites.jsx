@@ -21,6 +21,7 @@ export default function Favorites() {
   const [dislikedProperties, setDislikedProperties] = useState([]);
   const [likedTotal, setLikedTotal] = useState(0);
   const [dislikedTotal, setDislikedTotal] = useState(0);
+  const [unavailableLikedCount, setUnavailableLikedCount] = useState(0);
   const [alsoLike, setAlsoLike] = useState([]);
   const [curatedProperties, setCuratedProperties] = useState([]);
   const [client, setClient] = useState(null);
@@ -43,11 +44,12 @@ export default function Favorites() {
 
     const fav = await getClientFavorites(clientId);
 
-    // Clean up duplicate reactions (keep one per client+property).
+    // Clean up duplicate reactions (keep one per client+property) with
+    // individual deletes — deleteMany is not part of the SDK.
     if (fav.duplicateReactionIds.length > 0) {
-      try {
-        await base44.entities.Reaction.deleteMany({ id: { $in: fav.duplicateReactionIds } });
-      } catch (e) { /* ignore */ }
+      await Promise.all(fav.duplicateReactionIds.map(rid =>
+        base44.entities.Reaction.delete(rid).catch(err => console.error('Error al borrar reacción duplicada', rid, err))
+      ));
     }
 
     // Sync the stored counters with the real unique totals so they never drift.
@@ -70,9 +72,12 @@ export default function Favorites() {
     };
     const sortByMatch = (a, b) => (b._matchPercentage || 0) - (a._matchPercentage || 0);
 
-    // Show ALL liked/disliked properties (available + no longer available).
-    setLikedProperties(fav.likedProperties.map(enrich).sort(sortByMatch));
-    setDislikedProperties(fav.dislikedProperties.map(enrich).sort(sortByMatch));
+    // Render only available properties; track how many are no longer available.
+    const likedAll = fav.likedProperties.map(enrich);
+    const likedAvailable = likedAll.filter(p => p._available);
+    setLikedProperties(likedAvailable.sort(sortByMatch));
+    setUnavailableLikedCount(likedAll.length - likedAvailable.length);
+    setDislikedProperties(fav.dislikedProperties.map(enrich).filter(p => p._available).sort(sortByMatch));
 
     // Recommendations — separate query by zone, independent from favorites list.
     const available = await base44.entities.Property.filter({ status: 'Disponible' });
@@ -103,7 +108,10 @@ export default function Favorites() {
     try {
       // Delete ALL 'like' reactions for this client+property so duplicates
       // don't make the property reappear.
-      await base44.entities.Reaction.deleteMany({ client_id: clientId, property_id: property.id, reaction_type: 'like' });
+      const likeReactions = await base44.entities.Reaction.filter({ client_id: clientId, property_id: property.id, reaction_type: 'like' });
+      await Promise.all(likeReactions.map(r =>
+        base44.entities.Reaction.delete(r.id).catch(err => console.error('Error al borrar reacción like', r.id, err))
+      ));
       const c = client;
       await base44.entities.Client.update(clientId, {
         liked_count: Math.max(0, (c?.liked_count || 1) - 1),
@@ -118,7 +126,10 @@ export default function Favorites() {
     const clientId = localStorage.getItem('latitud_client_id');
     if (!clientId) return;
     try {
-      await base44.entities.Reaction.deleteMany({ client_id: clientId, property_id: property.id, reaction_type: 'dislike' });
+      const dislikeReactions = await base44.entities.Reaction.filter({ client_id: clientId, property_id: property.id, reaction_type: 'dislike' });
+      await Promise.all(dislikeReactions.map(r =>
+        base44.entities.Reaction.delete(r.id).catch(err => console.error('Error al borrar reacción dislike', r.id, err))
+      ));
       await base44.entities.Reaction.create({
         client_id: clientId,
         property_id: property.id,
@@ -148,7 +159,6 @@ export default function Favorites() {
 
   const renderCard = (property, isDisliked) => {
     const cover = getCoverPhoto(property);
-    const unavailable = property._available === false;
     return (
       <div
         key={property.id}
@@ -160,23 +170,15 @@ export default function Favorites() {
             src={cover}
             alt={property.title}
             onError={(e) => { e.target.src = getFallbackImage(property); }}
-            className={`w-full h-full object-cover ${unavailable ? 'opacity-50 grayscale' : ''}`}
+            className="w-full h-full object-cover"
           />
           <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
-          {unavailable ? (
-            <div className="absolute top-3 right-3">
-              <span className="bg-gray-600 text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                Ya no disponible
-              </span>
-            </div>
-          ) : (
-            <div className="absolute top-3 right-3">
-              <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
-                {property._matchPercentage}% match
-              </span>
-            </div>
-          )}
-          {!unavailable && property._matchReason && (
+          <div className="absolute top-3 right-3">
+            <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+              {property._matchPercentage}% match
+            </span>
+          </div>
+          {property._matchReason && (
             <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
               <Sparkles size={12} className="text-latitud-orange mt-0.5 shrink-0" />
               <p className="text-white/90 text-[11px] leading-snug">{property._matchReason}</p>
@@ -204,17 +206,15 @@ export default function Favorites() {
             >
               Ver detalle
             </button>
-            {!unavailable && (
-              <a
-                href={buildPropertyWhatsAppUrl(property)}
-                target="_blank"
-                rel="noreferrer"
-                onClick={(e) => e.stopPropagation()}
-                className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-[#25D366] text-white flex items-center justify-center gap-1.5"
-              >
-                <MessageCircle size={14} /> WhatsApp
-              </a>
-            )}
+            <a
+              href={buildPropertyWhatsAppUrl(property)}
+              target="_blank"
+              rel="noreferrer"
+              onClick={(e) => e.stopPropagation()}
+              className="px-3 text-xs font-semibold py-2.5 rounded-xl bg-[#25D366] text-white flex items-center justify-center gap-1.5"
+            >
+              <MessageCircle size={14} /> WhatsApp
+            </a>
             {isDisliked ? (
               <button
                 onClick={(e) => { e.stopPropagation(); moveToLiked(property); }}
@@ -270,6 +270,10 @@ export default function Favorites() {
               : 'Aún no tienes propiedades guardadas.'}
         </p>
       </div>
+
+      {activeTab === 'liked' && unavailableLikedCount > 0 && (
+        <p className="px-4 pt-1 text-xs text-white/40">{unavailableLikedCount} de tus propiedades guardadas ya no están disponibles.</p>
+      )}
 
       {/* Tabs */}
       <div className="px-4 pt-2 pb-1">

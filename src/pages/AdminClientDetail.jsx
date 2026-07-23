@@ -4,6 +4,7 @@ import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star,
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
+import { isBuyerVisible, evaluateBuyerVisibility, HIDDEN_REASON_LABELS } from '@/lib/commissionRules';
 import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 import CuratedSelectionEditor from '@/components/CuratedSelectionEditor';
 
@@ -23,6 +24,7 @@ export default function AdminClientDetail() {
   const [tours, setTours] = useState([]);
   const [allProps, setAllProps] = useState([]);
   const [recommended, setRecommended] = useState([]);
+  const [likedProps, setLikedProps] = useState([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -43,6 +45,11 @@ export default function AdminClientDetail() {
     setVisits(allVisits);
     setTours(allTours);
     setAllProps(allProps);
+
+    // Fetch liked properties by ID so we can diagnose which are no longer available.
+    const likedIds = [...new Set(allReactions.filter(r => r.reaction_type === 'like').map(r => r.property_id))];
+    const likedPropsFetched = likedIds.length > 0 ? await base44.entities.Property.filter({ id: { $in: likedIds } }) : [];
+    setLikedProps(likedPropsFetched);
 
     // Recommended properties
     const reactedIds = allReactions.map(r => r.property_id);
@@ -86,6 +93,7 @@ export default function AdminClientDetail() {
   const likes = reactions.filter(r => r.reaction_type === 'like');
   const dislikes = reactions.filter(r => r.reaction_type === 'dislike');
   const propMap = Object.fromEntries(allProps.map(p => [p.id, p]));
+  const unavailableLiked = likedProps.filter(p => !isBuyerVisible(p));
 
   return (
     <div className="px-4 py-6 pb-24">
@@ -253,6 +261,25 @@ export default function AdminClientDetail() {
           </div>
         )}
       </div>
+
+      {/* Diagnóstico: propiedades guardadas que ya no están disponibles */}
+      {unavailableLiked.length > 0 && (
+        <div className="bg-white rounded-2xl p-4 shadow-sm mb-4">
+          <h3 className="font-semibold text-sm text-latitud-black mb-1 flex items-center gap-2">
+            <Eye size={14} className="text-latitud-gray" /> Propiedades guardadas no disponibles
+          </h3>
+          <p className="text-xs text-latitud-gray mb-3">{unavailableLiked.length} propiedades guardadas ya no están disponibles.</p>
+          {unavailableLiked.map(p => {
+            const reason = HIDDEN_REASON_LABELS[evaluateBuyerVisibility(p).reason] || evaluateBuyerVisibility(p).reason || p.hidden_reason || '—';
+            return (
+              <div key={p.id} className="py-2 border-b border-gray-50 last:border-0">
+                <p className="text-sm text-latitud-black truncate">{p.title}</p>
+                <p className="text-xs text-latitud-gray">{reason}</p>
+              </div>
+            );
+          })}
+        </div>
+      )}
 
       {/* Selección del asesor */}
       <CuratedSelectionEditor
