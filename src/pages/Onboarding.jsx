@@ -6,7 +6,7 @@ import { base44 } from '@/api/base44Client';
 import LatitudLogo from '@/components/LatitudLogo';
 import { countAvailable, availableZonesFromProperties, budgetLabel } from '@/lib/clientFilters';
 import { formatThousands, parseThousands } from '@/lib/priceFormat';
-import { formatPhoneDisplay } from '@/lib/phoneNormalize';
+import { formatPhoneDisplay, normalizePhoneMX } from '@/lib/phoneNormalize';
 import { isDemoSkipAccess, ensureDemoClient } from '@/lib/demoAccess';
 
 const OPERATIONS = [
@@ -110,9 +110,10 @@ export default function Onboarding() {
     setSaving(true);
     try {
       const clientId = localStorage.getItem('latitud_client_id');
+      const normalizedPhone = normalizePhoneMX(contact.whatsapp);
       const updates = {
         name: contact.name,
-        whatsapp: contact.whatsapp,
+        whatsapp: normalizedPhone,
         email: contact.email || '',
         city: 'Mérida',
         operation_preference: operation || 'Explorar',
@@ -130,11 +131,22 @@ export default function Onboarding() {
         last_activity_date: new Date().toISOString()
       };
       // Phone is verified by the OTP flow — onboarding must NOT set phone_verified.
+      let targetId = clientId;
       if (clientId) {
         await base44.entities.Client.update(clientId, updates);
       } else {
-        await base44.entities.Client.create({ ...updates, lead_source: 'MatchHouse', assigned_advisor: 'Carlos Ramírez', buyer_intent_score: 10, lead_score: 10, lead_status: 'explorando' });
+        // No local session — search by normalized WhatsApp to avoid duplicates.
+        const existing = await base44.entities.Client.filter({ whatsapp: normalizedPhone });
+        if (existing.length > 0) {
+          const master = existing.find(c => !c.duplicate_of) || existing[0];
+          await base44.entities.Client.update(master.id, updates);
+          targetId = master.id;
+        } else {
+          const created = await base44.entities.Client.create({ ...updates, lead_source: 'MatchHouse', assigned_advisor: 'Carlos Ramírez', buyer_intent_score: 10, lead_score: 10, lead_status: 'explorando' });
+          targetId = created.id;
+        }
       }
+      localStorage.setItem('latitud_client_id', targetId);
       localStorage.setItem('latitud_client_name', contact.name);
       navigate('/discover', { replace: true });
     } catch (e) { /* ignore */ }

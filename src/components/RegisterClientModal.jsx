@@ -43,7 +43,7 @@ export default function RegisterClientModal({ open, onClose, onExisting, onCreat
       const existing = await base44.entities.Client.filter({ whatsapp: normalized });
       if (existing.length > 0) {
         const master = existing.find(c => !c.duplicate_of) || existing[0];
-        toast({ title: 'Este cliente ya está registrado', description: 'Abrimos su registro existente.' });
+        toast({ title: `Ya existe un cliente con este número: ${master.name || 'Sin nombre'}`, description: 'Abrimos su registro existente.' });
         onExisting(master.id);
         return;
       }
