@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send, Eye } from 'lucide-react';
+import { ArrowLeft, Heart, ThumbsDown, Calendar, MapPin, DollarSign, Home, Star, Phone, Mail, MessageCircle, Clock, Send, Eye, Trash2, AlertTriangle, X, Loader2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { formatPrice, calculateMatch } from '@/lib/matchEngine';
 import { getCoverPhoto } from '@/lib/propertyImages';
@@ -8,6 +8,7 @@ import { isBuyerVisible, evaluateBuyerVisibility, HIDDEN_REASON_LABELS } from '@
 import { clientOrigin } from '@/lib/clientOrigin';
 import { formatPhoneDisplay } from '@/lib/phoneNormalize';
 import CuratedSelectionEditor from '@/components/CuratedSelectionEditor';
+import { useToast } from '@/components/ui/use-toast';
 
 const WA_MESSAGES = [
   { label: 'Enviar selección', template: 'Hola, [Nombre]. Vi que te gustaron algunas propiedades en [Zona]. Te preparé una selección más cercana a lo que buscas. ¿Te la envío por aquí?' },
@@ -27,6 +28,11 @@ export default function AdminClientDetail() {
   const [recommended, setRecommended] = useState([]);
   const [likedProps, setLikedProps] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [showDelete, setShowDelete] = useState(false);
+  const [deleteText, setDeleteText] = useState('');
+  const [deleting, setDeleting] = useState(false);
+  const [taskCount, setTaskCount] = useState(0);
+  const { toast } = useToast();
 
   useEffect(() => {
     loadClient();
@@ -79,6 +85,27 @@ export default function AdminClientDetail() {
 
     const phone = client.whatsapp?.replace(/[^0-9]/g, '');
     window.open(`https://wa.me/${phone}?text=${encodeURIComponent(msg)}`, '_blank');
+  };
+
+  const openDelete = async () => {
+    try {
+      const tasks = await base44.entities.Task.filter({ client_id: id });
+      setTaskCount(tasks.length);
+    } catch (e) { setTaskCount(0); }
+    setDeleteText('');
+    setShowDelete(true);
+  };
+
+  const confirmDelete = async () => {
+    setDeleting(true);
+    try {
+      await base44.functions.invoke('deleteClient', { clientId: id });
+      toast({ title: 'Cliente eliminado', description: `${client.name} y sus registros asociados fueron borrados.` });
+      navigate('/admin/clients');
+    } catch (e) {
+      toast({ title: 'Error', description: e.response?.data?.error || e.message });
+      setDeleting(false);
+    }
   };
 
   if (loading) {
@@ -346,6 +373,51 @@ export default function AdminClientDetail() {
           ))}
         </div>
       </div>
+
+      {/* Danger zone */}
+      <div className="mb-4">
+        <button onClick={openDelete} className="text-xs text-red-500 font-semibold flex items-center gap-1.5">
+          <Trash2 size={13} /> Eliminar cliente
+        </button>
+      </div>
+
+      {/* Delete confirmation */}
+      {showDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => !deleting && setShowDelete(false)}>
+          <div className="w-full bg-white rounded-t-3xl px-6 pt-6 pb-8" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-heading text-lg text-latitud-black">Eliminar cliente</h3>
+              <button onClick={() => setShowDelete(false)} className="p-1"><X size={18} className="text-latitud-gray" /></button>
+            </div>
+            <p className="text-sm text-latitud-gray mb-3">Se eliminará a <span className="font-semibold text-latitud-black">{client.name}</span> y sus registros asociados:</p>
+            <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+              <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Reacciones</span><span className="font-semibold text-latitud-black">{reactions.length}</span></div>
+              <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Recorridos</span><span className="font-semibold text-latitud-black">{tours.length}</span></div>
+              <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Visitas</span><span className="font-semibold text-latitud-black">{visits.length}</span></div>
+              <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Tareas</span><span className="font-semibold text-latitud-black">{taskCount}</span></div>
+            </div>
+            {client.phone_verified && (
+              <div className="flex items-center gap-2 bg-red-50 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl mb-3">
+                <AlertTriangle size={14} /> Este es un cliente real verificado por WhatsApp
+              </div>
+            )}
+            <p className="text-xs text-latitud-gray mb-2">Escribe <span className="font-bold text-red-500">ELIMINAR</span> para confirmar. Esta acción no se puede deshacer.</p>
+            <input
+              type="text"
+              value={deleteText}
+              onChange={e => setDeleteText(e.target.value)}
+              placeholder="ELIMINAR"
+              className="w-full px-4 py-3 rounded-xl bg-latitud-light border border-gray-100 text-sm mb-4 focus:border-red-400 focus:outline-none"
+            />
+            <div className="flex gap-2">
+              <button onClick={() => setShowDelete(false)} className="flex-1 py-3 rounded-xl border border-gray-100 text-latitud-gray text-sm font-semibold">Cancelar</button>
+              <button onClick={confirmDelete} disabled={deleteText !== 'ELIMINAR' || deleting} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40">
+                {deleting ? <Loader2 size={16} className="animate-spin" /> : <><Trash2 size={14} /> Eliminar</>}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

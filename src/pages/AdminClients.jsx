@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useMemo } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle, UserPlus, RefreshCw, Loader2, AlertTriangle, GitMerge, X } from 'lucide-react';
+import { Search, Heart, Calendar, MapPin, Zap, Mail, Clock, CheckCircle, UserPlus, RefreshCw, Loader2, AlertTriangle, GitMerge, X, Trash2 } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { getLeadStatusLabel } from '@/lib/leadScoring';
 import { clientOrigin, phoneKey } from '@/lib/clientOrigin';
@@ -40,6 +40,7 @@ export default function AdminClients() {
   const [selectedMasters, setSelectedMasters] = useState({});
   const [merging, setMerging] = useState(false);
   const [mergeConfirm, setMergeConfirm] = useState(null);
+  const [bulkDelete, setBulkDelete] = useState(null);
 
   const loadClients = async () => {
     setLoading(true);
@@ -145,6 +146,37 @@ export default function AdminClients() {
       toast({ title: 'Error al fusionar', description: e.response?.data?.error || e.message });
     }
     setMerging(false);
+  };
+
+  const openBulkDelete = async () => {
+    const ids = filteredClients.map(c => c.id);
+    setBulkDelete({ ids, names: filteredClients.map(c => c.name || 'Sin nombre'), counts: null, text: '', loading: true, deleting: false, hasVerified: filteredClients.some(c => c.phone_verified) });
+    try {
+      const [reactions, tours, visits, tasks] = await Promise.all([
+        base44.entities.Reaction.filter({ client_id: { $in: ids } }, '-created_date', 1000),
+        base44.entities.TourRequest.filter({ client_id: { $in: ids } }, '-created_date', 1000),
+        base44.entities.VisitRequest.filter({ client_id: { $in: ids } }, '-created_date', 1000),
+        base44.entities.Task.filter({ client_id: { $in: ids } }, '-created_date', 1000)
+      ]);
+      setBulkDelete(prev => ({ ...prev, counts: { reactions: reactions.length, tours: tours.length, visits: visits.length, tasks: tasks.length }, loading: false }));
+    } catch (e) {
+      setBulkDelete(prev => ({ ...prev, loading: false, error: e.message }));
+    }
+  };
+
+  const confirmBulkDelete = async () => {
+    setBulkDelete(prev => ({ ...prev, deleting: true }));
+    const total = bulkDelete.ids.length;
+    let deleted = 0;
+    for (const cid of bulkDelete.ids) {
+      try {
+        await base44.functions.invoke('deleteClient', { clientId: cid });
+        deleted++;
+      } catch (e) { /* continue */ }
+    }
+    toast({ title: 'Clientes eliminados', description: `${deleted} de ${total} eliminados.` });
+    setBulkDelete(null);
+    await loadClients();
   };
 
   if (loading) {
@@ -268,6 +300,12 @@ export default function AdminClients() {
         </label>
       </div>
 
+      {filter === 'demo_data' && filteredClients.length > 0 && (
+        <button onClick={openBulkDelete} className="mb-4 text-xs font-semibold text-red-500 flex items-center gap-1.5">
+          <Trash2 size={13} /> Eliminar todos los de prueba ({filteredClients.length})
+        </button>
+      )}
+
       {/* Client list */}
       <div className="space-y-3">
         {filteredClients.length === 0 ? (
@@ -358,6 +396,53 @@ export default function AdminClients() {
                   <button onClick={() => setMergeConfirm(null)} className="flex-1 py-3 rounded-xl border border-gray-100 text-latitud-gray text-sm font-semibold">Cancelar</button>
                   <button onClick={confirmMerge} disabled={merging} className="flex-1 py-3 rounded-xl bg-latitud-orange text-white text-sm font-semibold flex items-center justify-center gap-2">
                     {merging ? <Loader2 size={16} className="animate-spin" /> : <><GitMerge size={14} /> Fusionar</>}
+                  </button>
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Bulk delete confirmation */}
+      {bulkDelete && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-end" onClick={() => !bulkDelete.deleting && setBulkDelete(null)}>
+          <div className="w-full bg-white rounded-t-3xl px-6 pt-6 pb-8 max-h-[85vh] overflow-y-auto" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="font-heading text-lg text-latitud-black">Eliminar todos los de prueba</h3>
+              <button onClick={() => setBulkDelete(null)} className="p-1"><X size={18} className="text-latitud-gray" /></button>
+            </div>
+            <p className="text-sm text-latitud-gray mb-2">Se eliminarán <span className="font-semibold text-latitud-black">{bulkDelete.ids.length}</span> clientes de prueba:</p>
+            <div className="max-h-32 overflow-y-auto mb-3 text-xs text-latitud-gray space-y-1">
+              {bulkDelete.names.map((n, i) => <p key={i} className="truncate">• {n}</p>)}
+            </div>
+            {bulkDelete.loading ? (
+              <div className="flex items-center justify-center py-6"><Loader2 size={20} className="animate-spin text-latitud-orange" /></div>
+            ) : (
+              <>
+                <div className="grid grid-cols-2 gap-2 mb-3 text-sm">
+                  <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Reacciones</span><span className="font-semibold text-latitud-black">{bulkDelete.counts?.reactions ?? 0}</span></div>
+                  <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Recorridos</span><span className="font-semibold text-latitud-black">{bulkDelete.counts?.tours ?? 0}</span></div>
+                  <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Visitas</span><span className="font-semibold text-latitud-black">{bulkDelete.counts?.visits ?? 0}</span></div>
+                  <div className="bg-latitud-light rounded-xl px-3 py-2 flex justify-between"><span className="text-latitud-gray">Tareas</span><span className="font-semibold text-latitud-black">{bulkDelete.counts?.tasks ?? 0}</span></div>
+                </div>
+                {bulkDelete.hasVerified && (
+                  <div className="flex items-center gap-2 bg-red-50 text-red-600 text-xs font-semibold px-3 py-2 rounded-xl mb-3">
+                    <AlertTriangle size={14} /> Incluye clientes reales verificados por WhatsApp
+                  </div>
+                )}
+                <p className="text-xs text-latitud-gray mb-2">Escribe <span className="font-bold text-red-500">ELIMINAR</span> para confirmar. Esta acción no se puede deshacer.</p>
+                <input
+                  type="text"
+                  value={bulkDelete.text}
+                  onChange={e => setBulkDelete(prev => ({ ...prev, text: e.target.value }))}
+                  placeholder="ELIMINAR"
+                  className="w-full px-4 py-3 rounded-xl bg-latitud-light border border-gray-100 text-sm mb-4 focus:border-red-400 focus:outline-none"
+                />
+                <div className="flex gap-2">
+                  <button onClick={() => setBulkDelete(null)} className="flex-1 py-3 rounded-xl border border-gray-100 text-latitud-gray text-sm font-semibold">Cancelar</button>
+                  <button onClick={confirmBulkDelete} disabled={bulkDelete.text !== 'ELIMINAR' || bulkDelete.deleting} className="flex-1 py-3 rounded-xl bg-red-500 text-white text-sm font-semibold flex items-center justify-center gap-2 disabled:opacity-40">
+                    {bulkDelete.deleting ? <Loader2 size={16} className="animate-spin" /> : <><Trash2 size={14} /> Eliminar {bulkDelete.ids.length}</>}
                   </button>
                 </div>
               </>
