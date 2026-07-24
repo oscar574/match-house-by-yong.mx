@@ -28,10 +28,25 @@ const TEAM_VALUES = [
 
 const DEFAULT_HERO = 'https://images.unsplash.com/photo-1600596542815-ffad4c1539a9?w=1920';
 
+const hexToRgba = (hex, alpha) => {
+  if (!hex) return `rgba(0,0,0,${alpha})`;
+  const c = String(hex).replace('#', '');
+  if (c.length !== 6) return `rgba(0,0,0,${alpha})`;
+  const r = parseInt(c.slice(0, 2), 16);
+  const g = parseInt(c.slice(2, 4), 16);
+  const b = parseInt(c.slice(4, 6), 16);
+  return `rgba(${r},${g},${b},${alpha})`;
+};
+
 export default function Welcome() {
   const navigate = useNavigate();
   const brand = useBrand();
   const [checking, setChecking] = useState(true);
+
+  // Theme-derived colors for the hero overlay and text.
+  const bg = brand.background_color;
+  const heroFg = contrastTextColor(bg);
+  const logoVariant = heroFg === '#FFFFFF' ? 'white' : 'dark';
 
   useEffect(() => {
     (async () => {
@@ -84,13 +99,13 @@ export default function Welcome() {
             animate={{ scale: 1 }}
             transition={{ duration: 8, ease: 'easeOut' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-overlay via-overlay/85 to-overlay/40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-overlay/70 to-transparent" />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(to top, ${hexToRgba(bg, 1)} 0%, ${hexToRgba(bg, 0.85)} 50%, ${hexToRgba(bg, 0.4)} 100%)` }} />
+          <div className="absolute inset-0" style={{ background: `linear-gradient(to right, ${hexToRgba(bg, 0.7)} 0%, transparent 100%)` }} />
         </div>
 
         <div className="relative z-10 min-h-screen flex flex-col px-6">
           <motion.div initial={{ opacity: 0, y: -20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.6 }} className="pt-12 pb-8">
-            <LatitudLogo variant="white" size="md" />
+            <LatitudLogo variant={logoVariant} size="md" />
           </motion.div>
 
           <div className="flex-1" />
@@ -98,10 +113,10 @@ export default function Welcome() {
           <motion.div initial={{ opacity: 0, y: 30 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.8, delay: 0.3 }} className="pb-10">
             <motion.div initial={{ width: 0 }} animate={{ width: 32 }} transition={{ duration: 0.6, delay: 0.5 }} className="h-0.5 mb-5" style={{ backgroundColor: brand.accent_color }} />
             <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-3" style={{ color: brand.accent_color }}>Descubrimiento inmobiliario privado, con IA.</p>
-            <h1 className="font-heading text-3xl md:text-[2.75rem] md:leading-[1.1] text-white leading-tight mb-4">
+            <h1 className="font-heading text-3xl md:text-[2.75rem] md:leading-[1.1] leading-tight mb-4" style={{ color: heroFg }}>
               {brand.tagline_principal || 'MatchHouse aprende lo que buscas y te muestra casas que vale la pena ver.'}
             </h1>
-            <p className="text-white/55 text-base leading-relaxed mb-8 max-w-md">
+            <p className="text-base leading-relaxed mb-8 max-w-md" style={{ color: hexToRgba(heroFg, 0.55) }}>
               {brand.tagline_secundaria || 'Una experiencia privada que entiende tu estilo de vida, tu presupuesto y tu momento — para mostrarte solo propiedades a tu altura.'}
             </p>
 
@@ -109,31 +124,31 @@ export default function Welcome() {
               Encontrar mi match <ArrowRight size={20} />
             </motion.button>
 
-            <p className="text-white/35 text-xs text-center mt-4">No spam. No es un portal. Solo casas seleccionadas para ti.</p>
+            <p className="text-xs text-center mt-4" style={{ color: hexToRgba(heroFg, 0.35) }}>No spam. No es un portal. Solo casas seleccionadas para ti.</p>
 
             <div className="grid grid-cols-2 gap-3 mt-8">
               {VALUES.map((v, i) => {
                 const Icon = v.icon;
                 return (
-                  <motion.div key={v.title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 + i * 0.08 }} className="bg-white/[0.06] backdrop-blur-sm rounded-xl p-3 border border-white/10">
+                  <motion.div key={v.title} initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5, delay: 0.6 + i * 0.08 }} className="backdrop-blur-sm rounded-xl p-3 border" style={{ backgroundColor: hexToRgba(heroFg, 0.06), borderColor: hexToRgba(heroFg, 0.15) }}>
                     <Icon size={18} className="mb-2" style={{ color: brand.accent_color }} />
-                    <p className="text-white text-xs font-semibold leading-tight">{v.title}</p>
-                    <p className="text-white/40 text-[10px] mt-0.5">{v.desc}</p>
+                    <p className="text-xs font-semibold leading-tight" style={{ color: heroFg }}>{v.title}</p>
+                    <p className="text-[10px] mt-0.5" style={{ color: hexToRgba(heroFg, 0.4) }}>{v.desc}</p>
                   </motion.div>
                 );
               })}
             </div>
 
-            <p className="text-white/30 text-xs text-center mt-8">Powered by YONG.MX</p>
+            <p className="text-xs text-center mt-8" style={{ color: hexToRgba(heroFg, 0.3) }}>Powered by YONG.MX</p>
           </motion.div>
         </div>
       </div>
 
       {/* ===== PARA EQUIPOS INMOBILIARIOS ===== */}
-      <div className="bg-[#FFFDF8] px-6 py-12">
+      <div className="bg-latitud-light px-6 py-12">
         <div className="max-w-2xl mx-auto">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: brand.accent_color }}>Para equipos inmobiliarios</p>
-          <h2 className="font-heading text-2xl md:text-3xl text-[#1A1A1A] leading-tight mb-3">
+          <h2 className="font-heading text-2xl md:text-3xl text-latitud-white leading-tight mb-3">
             Convierte la búsqueda de propiedades en intención de compra calificada.
           </h2>
           <p className="text-latitud-gray text-sm leading-relaxed mb-6">
@@ -144,9 +159,9 @@ export default function Welcome() {
             {TEAM_VALUES.map(v => {
               const Icon = v.icon;
               return (
-                <div key={v.title} className="bg-white rounded-2xl p-4 shadow-sm border" style={{ borderColor: brand.accent_color + '26' }}>
+                <div key={v.title} className="bg-latitud-black rounded-2xl p-4 shadow-sm border" style={{ borderColor: brand.accent_color + '26' }}>
                   <Icon size={20} className="mb-2" style={{ color: brand.accent_color }} />
-                  <p className="text-sm font-semibold text-[#1A1A1A]">{v.title}</p>
+                  <p className="text-sm font-semibold text-latitud-white">{v.title}</p>
                   <p className="text-xs text-latitud-gray mt-0.5">{v.desc}</p>
                 </div>
               );
@@ -154,7 +169,7 @@ export default function Welcome() {
           </div>
 
           <Link to="/onboarding">
-            <button className="w-full bg-latitud-black text-latitud-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2">
+            <button className="w-full font-semibold py-4 rounded-xl flex items-center justify-center gap-2" style={{ backgroundColor: brand.accent_color, color: contrastTextColor(brand.accent_color) }}>
               Solicitar una demo <ArrowRight size={18} />
             </button>
           </Link>
