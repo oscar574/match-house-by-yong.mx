@@ -1,6 +1,7 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import { base44 } from '@/api/base44Client';
 import { brandConfig, setActiveBrand } from '@/lib/brandConfig';
+import { contrastTextColor } from '@/lib/contrastColor';
 
 // Default brand identity = current MatchHouse values. BrandSettings records
 // (saved from Admin > White Label) override these per field.
@@ -40,6 +41,7 @@ export function BrandProvider({ children }) {
     root.setProperty('--brand-surface', merged.surface_color || '#F8F5EF');
     root.setProperty('--brand-muted', merged.text_secondary_color || '#8A7A63');
     root.setProperty('--brand-accent', merged.accent_color || '#C9A45C');
+    root.setProperty('--brand-accent-fg', contrastTextColor(merged.accent_color || '#C9A45C'));
     // Apply logo to favicon so the browser/tab reflects the white-label logo.
     if (merged.logo_url) {
       let link = document.querySelector("link[rel='icon']");

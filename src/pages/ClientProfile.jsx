@@ -60,7 +60,7 @@ export default function ClientProfile() {
     return (
       <div className="min-h-screen bg-white flex flex-col items-center justify-center px-6">
         <p className="text-latitud-gray mb-4">No se encontró tu perfil.</p>
-        <button onClick={() => navigate('/')} className="bg-latitud-orange text-white px-6 py-2.5 rounded-xl text-sm font-semibold">
+        <button onClick={() => navigate('/')} className="bg-latitud-orange text-[color:var(--brand-accent-fg)] px-6 py-2.5 rounded-xl text-sm font-semibold">
           Iniciar de nuevo
         </button>
       </div>

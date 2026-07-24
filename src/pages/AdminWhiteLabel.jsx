@@ -1,10 +1,11 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Save, Upload, RotateCcw, Image as ImageIcon } from 'lucide-react';
+import { Save, Upload, RotateCcw, Image as ImageIcon, AlertTriangle } from 'lucide-react';
 import { base44 } from '@/api/base44Client';
 import { brandConfig } from '@/lib/brandConfig';
 import { useBrandRefresh } from '@/lib/BrandSettingsContext';
 import { optimizeImage } from '@/lib/imageOptimize';
 import { useToast } from '@/components/ui/use-toast';
+import { contrastRatio } from '@/lib/contrastColor';
 import { Switch } from '@/components/ui/switch';
 
 const DEFAULTS = {
@@ -255,6 +256,29 @@ export default function AdminWhiteLabel() {
             Botón de acento
           </button>
         </div>
+
+        {/* Avisos de contraste */}
+        {(() => {
+          const ratioText = contrastRatio(cfg.background_color, cfg.text_primary_color);
+          const ratioAccent = contrastRatio(cfg.background_color, cfg.accent_color);
+          const lowText = ratioText < 4.5;
+          const lowAccent = ratioAccent < 4.5;
+          if (!lowText && !lowAccent) return null;
+          return (
+            <div className="space-y-1.5">
+              {lowText && (
+                <div className="flex items-center gap-2 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-2 rounded-xl">
+                  <AlertTriangle size={13} /> Contraste bajo: el texto puede ser difícil de leer ({ratioText.toFixed(1)}:1)
+                </div>
+              )}
+              {lowAccent && (
+                <div className="flex items-center gap-2 bg-amber-50 text-amber-700 text-xs font-medium px-3 py-2 rounded-xl">
+                  <AlertTriangle size={13} /> Contraste bajo: el acento contra el fondo puede ser difícil de leer ({ratioAccent.toFixed(1)}:1)
+                </div>
+              )}
+            </div>
+          );
+        })()}
 
         <ColorField label="Color primario (fondos oscuros)" value={cfg.primary_color} onChange={v => set('primary_color', v)} />
         <ColorField label="Color secundario (texto/apoyos)" value={cfg.secondary_color} onChange={v => set('secondary_color', v)} />

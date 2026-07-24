@@ -19,6 +19,7 @@ module.exports = {
   				light: 'var(--brand-surface)',
   				white: 'var(--brand-text)'
   			},
+  			overlay: '#050505',
   			card: {
   				DEFAULT: 'hsl(var(--card))',
   				foreground: 'hsl(var(--card-foreground))'

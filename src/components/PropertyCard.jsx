@@ -101,8 +101,8 @@ export default function PropertyCard({ property, matchPercentage, matchReason, i
             transition={{ duration: 0.25, ease: 'easeOut' }}
           />
         </AnimatePresence>
-        <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/30 to-transparent pointer-events-none" />
-        <div className="absolute inset-0 bg-gradient-to-b from-black/40 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-t from-overlay/90 via-overlay/30 to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-gradient-to-b from-overlay/40 via-transparent to-transparent pointer-events-none" />
       </div>
 
       {/* Photo navigation: dots + arrows (z-20, own click handlers) */}
@@ -115,13 +115,13 @@ export default function PropertyCard({ property, matchPercentage, matchReason, i
           </div>
           <button
             onClick={(e) => { e.stopPropagation(); goPrev(); }}
-            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-1.5 bg-black/30 rounded-full backdrop-blur-sm hover:bg-black/50 transition-colors"
+            className="absolute left-3 top-1/2 -translate-y-1/2 z-20 p-1.5 bg-overlay/30 rounded-full backdrop-blur-sm hover:bg-overlay/50 transition-colors"
           >
             <ChevronLeft size={22} className="text-white" />
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); goNext(); }}
-            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-1.5 bg-black/30 rounded-full backdrop-blur-sm hover:bg-black/50 transition-colors"
+            className="absolute right-3 top-1/2 -translate-y-1/2 z-20 p-1.5 bg-overlay/30 rounded-full backdrop-blur-sm hover:bg-overlay/50 transition-colors"
           >
             <ChevronRight size={22} className="text-white" />
           </button>

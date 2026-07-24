@@ -334,12 +334,12 @@ export default function Onboarding() {
           <button onClick={skip} className="px-5 py-3.5 rounded-xl text-latitud-gray font-medium text-sm">Omitir</button>
         )}
         {step < 4 ? (
-          <button onClick={next} disabled={!canNext()} className="flex-1 bg-[#C9A45C] text-latitud-black font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
+          <button onClick={next} disabled={!canNext()} className="flex-1 bg-[#C9A45C] text-[#1A1A1A] font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
             Siguiente <ArrowRight size={16} />
           </button>
         ) : (
-          <button onClick={finish} disabled={!canNext() || saving} className="flex-1 bg-[#C9A45C] text-latitud-black font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
-            {saving ? <div className="w-5 h-5 border-2 border-latitud-black/30 border-t-latitud-black rounded-full animate-spin" /> : 'Comenzar a explorar'}
+          <button onClick={finish} disabled={!canNext() || saving} className="flex-1 bg-[#C9A45C] text-[#1A1A1A] font-semibold py-3.5 rounded-xl flex items-center justify-center gap-2 disabled:opacity-40">
+            {saving ? <div className="w-5 h-5 border-2 border-[#1A1A1A]/30 border-t-[#1A1A1A] rounded-full animate-spin" /> : 'Comenzar a explorar'}
           </button>
         )}
       </div>

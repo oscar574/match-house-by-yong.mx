@@ -91,7 +91,7 @@ export default function Access() {
   return (
     <div className="min-h-screen bg-latitud-black flex flex-col">
       <div className="px-4 pt-6 pb-2 flex items-center justify-between">
-        <button onClick={() => (step === 'code' ? setStep('phone') : navigate('/'))} className="p-2 -ml-2 text-white/70">
+        <button onClick={() => (step === 'code' ? setStep('phone') : navigate('/'))} className="p-2 -ml-2 text-latitud-white/70">
           <ArrowLeft size={22} />
         </button>
         <LatitudLogo variant="white" size="sm" />
@@ -107,37 +107,37 @@ export default function Access() {
           <AnimatePresence mode="wait">
             {step === 'phone' ? (
               <motion.div key="phone" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h1 className="font-heading text-2xl text-white mb-2">Acceso con WhatsApp</h1>
-                <p className="text-white/50 text-sm mb-6">Te enviaremos un código de 6 dígitos por WhatsApp para verificar tu número.</p>
-                <label className="text-xs text-white/50 uppercase tracking-wider mb-1.5 block">Tu teléfono</label>
+                <h1 className="font-heading text-2xl text-latitud-white mb-2">Acceso con WhatsApp</h1>
+                <p className="text-latitud-gray text-sm mb-6">Te enviaremos un código de 6 dígitos por WhatsApp para verificar tu número.</p>
+                <label className="text-xs text-latitud-gray uppercase tracking-wider mb-1.5 block">Tu teléfono</label>
                 <input
                   type="tel"
                   inputMode="numeric"
                   value={phoneInput}
                   onChange={e => setPhoneInput(e.target.value)}
                   placeholder="999 123 4567"
-                  className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/10 text-white placeholder-white/30 text-lg focus:border-latitud-orange focus:outline-none"
+                  className="w-full px-4 py-4 rounded-xl bg-latitud-white/10 border border-latitud-white/10 text-latitud-white placeholder-latitud-gray text-lg focus:border-latitud-orange focus:outline-none"
                 />
                 {error && <p className="text-red-400 text-sm mt-2">{error}</p>}
                 <button
                   onClick={sendCode}
                   disabled={sending || !isValidMX(normalized)}
-                  className="w-full bg-latitud-orange text-latitud-black font-semibold py-4 rounded-xl mt-5 disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="w-full bg-latitud-orange text-[color:var(--brand-accent-fg)] font-semibold py-4 rounded-xl mt-5 disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {sending ? <Loader2 size={18} className="animate-spin" /> : 'Enviar código'}
                 </button>
                 {isValidMX(normalized) && (
-                  <p className="text-white/30 text-xs text-center mt-3">Lo enviaremos a {formatPhoneDisplay(normalized)}</p>
+                  <p className="text-latitud-gray text-xs text-center mt-3">Lo enviaremos a {formatPhoneDisplay(normalized)}</p>
                 )}
               </motion.div>
             ) : (
               <motion.div key="code" initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -20 }}>
-                <h1 className="font-heading text-2xl text-white mb-2">Ingresa el código</h1>
-                <p className="text-white/50 text-sm mb-5">Lo enviamos a {formatPhoneDisplay(normalized)}</p>
+                <h1 className="font-heading text-2xl text-latitud-white mb-2">Ingresa el código</h1>
+                <p className="text-latitud-gray text-sm mb-5">Lo enviamos a {formatPhoneDisplay(normalized)}</p>
                 {demoCode && (
                   <div className="bg-latitud-orange/15 border border-latitud-orange/30 rounded-xl px-4 py-3 mb-5">
                     <p className="text-latitud-orange text-sm font-semibold">Modo demo</p>
-                    <p className="text-white/70 text-xs mt-0.5">Usa el código <span className="font-bold tracking-widest">{demoCode}</span></p>
+                    <p className="text-latitud-white/70 text-xs mt-0.5">Usa el código <span className="font-bold tracking-widest">{demoCode}</span></p>
                   </div>
                 )}
                 <input
@@ -147,17 +147,17 @@ export default function Access() {
                   value={code}
                   onChange={e => setCode(e.target.value.replace(/\D/g, ''))}
                   placeholder="••••••"
-                  className="w-full px-4 py-4 rounded-xl bg-white/10 border border-white/10 text-white text-center text-2xl tracking-[0.5em] focus:border-latitud-orange focus:outline-none"
+                  className="w-full px-4 py-4 rounded-xl bg-latitud-white/10 border border-latitud-white/10 text-latitud-white text-center text-2xl tracking-[0.5em] focus:border-latitud-orange focus:outline-none"
                 />
                 {error && <p className="text-red-400 text-sm mt-2 text-center">{error}</p>}
                 <button
                   onClick={verify}
                   disabled={verifying || code.length !== 6}
-                  className="w-full bg-latitud-orange text-latitud-black font-semibold py-4 rounded-xl mt-5 disabled:opacity-40 flex items-center justify-center gap-2"
+                  className="w-full bg-latitud-orange text-[color:var(--brand-accent-fg)] font-semibold py-4 rounded-xl mt-5 disabled:opacity-40 flex items-center justify-center gap-2"
                 >
                   {verifying ? <Loader2 size={18} className="animate-spin" /> : 'Verificar y entrar'}
                 </button>
-                <button onClick={resend} disabled={sending} className="w-full flex items-center justify-center gap-2 text-white/50 text-sm mt-3 py-2">
+                <button onClick={resend} disabled={sending} className="w-full flex items-center justify-center gap-2 text-latitud-gray text-sm mt-3 py-2">
                   <RefreshCw size={14} /> Reenviar código
                 </button>
               </motion.div>

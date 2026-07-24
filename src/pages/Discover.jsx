@@ -19,9 +19,12 @@ import { addLeadScore, ensureLeadTask } from '@/lib/leadScoring';
 import { countDuplicates } from '@/lib/duplicateDetection';
 import { useToast } from '@/components/ui/use-toast';
 import { trackAppOpen } from '@/lib/sessionTracking';
+import { useBrand } from '@/lib/BrandSettingsContext';
+import { contrastTextColor } from '@/lib/contrastColor';
 
 export default function Discover() {
   const navigate = useNavigate();
+  const brand = useBrand();
   const [properties, setProperties] = useState([]);
   const [currentIndex, setCurrentIndex] = useState(0);
   const [client, setClient] = useState(null);
@@ -389,13 +392,13 @@ export default function Discover() {
       <div className="px-4 pt-6 pb-3 flex items-center justify-between sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <LatitudLogo variant="white" size="sm" />
         <div className="flex items-center gap-3">
-          <button onClick={() => setShowPrefs(true)} className="text-white/60 hover:text-latitud-orange transition-colors">
+          <button onClick={() => setShowPrefs(true)} className="text-latitud-gray hover:text-latitud-orange transition-colors">
             <SlidersHorizontal size={20} />
           </button>
-          <button onClick={() => navigate('/favorites')} className="text-white/60 hover:text-latitud-orange transition-colors relative">
+          <button onClick={() => navigate('/favorites')} className="text-latitud-gray hover:text-latitud-orange transition-colors relative">
             <Heart size={20} />
             {likedCount > 0 && (
-              <span className="absolute -top-1.5 -right-1.5 bg-latitud-orange text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
+              <span className="absolute -top-1.5 -right-1.5 bg-latitud-orange text-[color:var(--brand-accent-fg)] text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center">
                 {likedCount}
               </span>
             )}
@@ -409,9 +412,9 @@ export default function Discover() {
           <div className="mb-3">
             <div className="flex items-center gap-2 mb-0.5">
               <Sparkles size={16} className="text-latitud-orange" />
-              <h2 className="font-heading text-xl text-white">Tu match perfecto</h2>
+              <h2 className="font-heading text-xl text-latitud-white">Tu match perfecto</h2>
             </div>
-            <p className="text-white/40 text-xs ml-6">Desliza para ver más · Toca el corazón para guardar</p>
+            <p className="text-latitud-gray text-xs ml-6">Desliza para ver más · Toca el corazón para guardar</p>
           </div>
           <div className="relative min-h-[60vh]">
             <AnimatePresence mode="wait">
@@ -439,33 +442,33 @@ export default function Discover() {
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={handleDislike}
-                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+                className="w-14 h-14 rounded-full bg-latitud-white/10 backdrop-blur-sm flex items-center justify-center border border-latitud-white/10"
               >
-                <X size={24} className="text-white/70" />
+                <X size={24} className="text-latitud-white/70" />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={handleLike}
                 className="w-16 h-16 rounded-full bg-latitud-orange flex items-center justify-center shadow-lg accent-glow"
               >
-                <Heart size={28} className="text-latitud-black" fill="#050505" />
+                <Heart size={28} style={{ color: contrastTextColor(brand.accent_color) }} fill={contrastTextColor(brand.accent_color)} />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={handleVisit}
-                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+                className="w-14 h-14 rounded-full bg-latitud-white/10 backdrop-blur-sm flex items-center justify-center border border-latitud-white/10"
               >
-                <Calendar size={22} className="text-white/70" />
+                <Calendar size={22} className="text-latitud-white/70" />
               </motion.button>
               <motion.button
                 whileTap={{ scale: 0.9 }}
                 onClick={() => navigate(`/property/${currentProperty.id}`)}
-                className="w-14 h-14 rounded-full bg-white/10 backdrop-blur-sm flex items-center justify-center border border-white/10"
+                className="w-14 h-14 rounded-full bg-latitud-white/10 backdrop-blur-sm flex items-center justify-center border border-latitud-white/10"
               >
-                <Info size={22} className="text-white/70" />
+                <Info size={22} className="text-latitud-white/70" />
               </motion.button>
             </div>
-            <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-white/30 tracking-wider uppercase">
+            <div className="flex items-center justify-center gap-8 mt-3 text-[10px] text-latitud-gray tracking-wider uppercase">
               <span className="w-14 text-center">Descartar</span>
               <span className="w-16 text-center">Guardar</span>
               <span className="w-14 text-center">Agendar</span>
@@ -474,7 +477,7 @@ export default function Discover() {
           </div>
         </div>
       ) : (
-        <p className="px-4 pt-6 pb-2 text-center text-xs text-white/40">
+        <p className="px-4 pt-6 pb-2 text-center text-xs text-latitud-gray">
           Has visto todas las propiedades disponibles en tu zona de interés — sigue explorando abajo
         </p>
       )}
@@ -490,9 +493,9 @@ export default function Discover() {
       {showOutOfZone && (
         <div className="pt-6">
           <div className="px-4 mb-2 flex items-center gap-3">
-            <div className="h-px flex-1 bg-white/10" />
-            <span className="text-[10px] uppercase tracking-wider text-white/40 whitespace-nowrap">Fuera de tu zona</span>
-            <div className="h-px flex-1 bg-white/10" />
+            <div className="h-px flex-1 bg-latitud-white/10" />
+            <span className="text-[10px] uppercase tracking-wider text-latitud-gray whitespace-nowrap">Fuera de tu zona</span>
+            <div className="h-px flex-1 bg-latitud-white/10" />
           </div>
           <PropertyCarousel title="Podrían interesarte" properties={outOfZone} />
         </div>

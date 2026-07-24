@@ -17,21 +17,21 @@ export default function PropertyCarousel({ title, subtitle, properties }) {
     <div className="mb-7 group">
       <div className="flex items-end justify-between px-4 mb-3">
         <div>
-          <h3 className="font-heading text-lg text-white leading-tight">{title}</h3>
-          {subtitle && <p className="text-white/40 text-xs mt-0.5">{subtitle}</p>}
+          <h3 className="font-heading text-lg text-latitud-white leading-tight">{title}</h3>
+          {subtitle && <p className="text-latitud-gray text-xs mt-0.5">{subtitle}</p>}
         </div>
         <div className="flex gap-1.5">
           <button
             onClick={() => scroll(-1)}
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-7 h-7 rounded-full bg-latitud-white/10 flex items-center justify-center hover:bg-latitud-white/20 transition-colors"
           >
-            <ChevronLeft size={14} className="text-white/70" />
+            <ChevronLeft size={14} className="text-latitud-white/70" />
           </button>
           <button
             onClick={() => scroll(1)}
-            className="w-7 h-7 rounded-full bg-white/10 flex items-center justify-center hover:bg-white/20 transition-colors"
+            className="w-7 h-7 rounded-full bg-latitud-white/10 flex items-center justify-center hover:bg-latitud-white/20 transition-colors"
           >
-            <ChevronRight size={14} className="text-white/70" />
+            <ChevronRight size={14} className="text-latitud-white/70" />
           </button>
         </div>
       </div>

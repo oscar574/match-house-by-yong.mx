@@ -170,7 +170,7 @@ export default function Favorites() {
       <div
         key={property.id}
         onClick={() => navigate(`/property/${property.id}`)}
-        className="bg-white/[0.04] rounded-2xl overflow-hidden border border-white/10 cursor-pointer hover:border-white/20 transition-colors"
+        className="bg-latitud-white/[0.04] rounded-2xl overflow-hidden border border-latitud-white/10 cursor-pointer hover:border-latitud-white/20 transition-colors"
       >
         <div className="relative h-52">
           <img
@@ -179,14 +179,14 @@ export default function Favorites() {
             onError={(e) => { e.target.src = getFallbackImage(property); }}
             className="w-full h-full object-cover"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-black/70 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-overlay/70 via-transparent to-transparent" />
           <div className="absolute top-3 right-3">
-            <span className="bg-latitud-orange text-white text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
+            <span className="bg-latitud-orange text-[color:var(--brand-accent-fg)] text-xs font-bold px-2.5 py-1 rounded-full shadow-lg">
               {property._matchPercentage}% match
             </span>
           </div>
           {property._matchReason && (
-            <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-black/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
+            <div className="absolute bottom-3 left-3 right-3 flex items-start gap-1.5 bg-overlay/40 backdrop-blur-sm rounded-lg px-2.5 py-1.5">
               <Sparkles size={12} className="text-latitud-orange mt-0.5 shrink-0" />
               <p className="text-white/90 text-[11px] leading-snug">{property._matchReason}</p>
             </div>
@@ -194,12 +194,12 @@ export default function Favorites() {
         </div>
         <div className="p-4">
           <p className="text-latitud-orange font-bold text-lg mb-1">{formatPriceExact(property.price, property.currency)}</p>
-          <h3 className="font-heading text-base text-white leading-tight mb-1.5">{property.title}</h3>
-          <div className="flex items-center gap-1 text-white/50 text-xs mb-3">
+          <h3 className="font-heading text-base text-latitud-white leading-tight mb-1.5">{property.title}</h3>
+          <div className="flex items-center gap-1 text-latitud-gray text-xs mb-3">
             <MapPin size={12} />
             <span>{property.zone}, {property.city}</span>
           </div>
-          <div className="flex items-center gap-4 text-white/70 text-xs mb-4">
+          <div className="flex items-center gap-4 text-latitud-white/70 text-xs mb-4">
             {property.bedrooms > 0 && <span className="flex items-center gap-1"><Bed size={13} /> {property.bedrooms}</span>}
             {property.bathrooms > 0 && <span className="flex items-center gap-1"><Bath size={13} /> {property.bathrooms}</span>}
             {property.parking_spaces > 0 && <span className="flex items-center gap-1"><Car size={13} /> {property.parking_spaces}</span>}
@@ -209,7 +209,7 @@ export default function Favorites() {
           <div className="flex gap-2">
             <button
               onClick={(e) => { e.stopPropagation(); navigate(`/property/${property.id}`); }}
-              className="flex-1 text-xs font-semibold py-2.5 rounded-xl border border-white/20 text-white"
+              className="flex-1 text-xs font-semibold py-2.5 rounded-xl border border-latitud-white/20 text-white"
             >
               Ver detalle
             </button>
@@ -227,21 +227,21 @@ export default function Favorites() {
                 onClick={(e) => { e.stopPropagation(); moveToLiked(property); }}
                 disabled={atLimit}
                 title={atLimit ? 'Límite de favoritos alcanzado' : 'Mover a favoritos'}
-                className={`px-3 text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center ${atLimit ? 'bg-white/10 text-white/30 cursor-not-allowed' : 'bg-latitud-orange text-white'}`}
+                className={`px-3 text-xs font-semibold py-2.5 rounded-xl flex items-center justify-center ${atLimit ? 'bg-latitud-white/10 text-latitud-gray cursor-not-allowed' : 'bg-latitud-orange text-[color:var(--brand-accent-fg)]'}`}
               >
                 <Heart size={14} />
               </button>
             ) : (
               <button
                 onClick={(e) => { e.stopPropagation(); removeFavorite(property); }}
-                className="px-3 text-xs font-semibold py-2.5 rounded-xl border border-white/10 text-white/50 hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center"
+                className="px-3 text-xs font-semibold py-2.5 rounded-xl border border-latitud-white/10 text-latitud-gray hover:text-red-300 hover:border-red-300/30 transition-colors flex items-center justify-center"
               >
                 <Trash2 size={14} />
               </button>
             )}
           </div>
           {isDisliked && atLimit && (
-            <p className="text-[10px] text-white/40 mt-2">Límite de favoritos alcanzado. Elimina una para mover esta.</p>
+            <p className="text-[10px] text-latitud-gray mt-2">Límite de favoritos alcanzado. Elimina una para mover esta.</p>
           )}
         </div>
       </div>
@@ -264,16 +264,16 @@ export default function Favorites() {
       <div className="px-5 pt-6 pb-4 sticky top-0 bg-latitud-black/95 backdrop-blur-sm z-30">
         <div className="flex items-center justify-between mb-4">
           <button onClick={() => navigate('/discover')} className="p-1 -ml-1">
-            <Heart size={22} className="text-white" />
+            <Heart size={22} className="text-latitud-white" />
           </button>
           <LatitudLogo variant="white" size="sm" />
           <div className="w-8" />
         </div>
         <div className="flex items-center gap-2 mb-1">
           <Heart size={18} className="text-latitud-orange" fill="currentColor" />
-          <h1 className="font-heading text-2xl text-white">{activeTab === 'disliked' ? 'No me interesan' : 'Mi selección'}</h1>
+          <h1 className="font-heading text-2xl text-latitud-white">{activeTab === 'disliked' ? 'No me interesan' : 'Mi selección'}</h1>
         </div>
-        <p className="text-sm text-white/50 leading-snug">
+        <p className="text-sm text-latitud-gray leading-snug">
           {activeTab === 'disliked'
             ? 'Propiedades que descartaste. Puedes devolverlas a tu selección cuando quieras.'
             : likedProperties.length > 0
@@ -287,13 +287,13 @@ export default function Favorites() {
         <div className="flex gap-2">
           <button
             onClick={() => switchTab('liked')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'liked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'liked' ? 'bg-latitud-orange text-[color:var(--brand-accent-fg)]' : 'bg-latitud-white/[0.06] text-latitud-gray border border-latitud-white/10'}`}
           >
             Me gustan {likedProperties.length > 0 ? `· ${likedProperties.length}` : ''}
           </button>
           <button
             onClick={() => switchTab('disliked')}
-            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'disliked' ? 'bg-latitud-orange text-white' : 'bg-white/[0.06] text-white/50 border border-white/10'}`}
+            className={`flex-1 py-2.5 rounded-xl text-sm font-semibold ${activeTab === 'disliked' ? 'bg-latitud-orange text-[color:var(--brand-accent-fg)]' : 'bg-latitud-white/[0.06] text-latitud-gray border border-latitud-white/10'}`}
           >
             No me interesan {dislikedProperties.length > 0 ? `· ${dislikedProperties.length}` : ''}
           </button>
@@ -307,7 +307,7 @@ export default function Favorites() {
           <div className="bg-[#C9A45C]/10 border border-[#C9A45C]/30 rounded-2xl p-4">
             <div className="flex items-center gap-2 mb-3">
               <Star size={16} className="text-[#C9A45C]" fill="currentColor" />
-              <h3 className="font-heading text-base text-white">Selección de tu asesor</h3>
+              <h3 className="font-heading text-base text-latitud-white">Selección de tu asesor</h3>
             </div>
             <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-1 px-1 pb-1">
               {curatedProperties.map(p => (
@@ -321,26 +321,26 @@ export default function Favorites() {
           <>
             {/* Profile summary + tour request */}
             {likedProperties.length > 0 && client && (
-              <div className="bg-white/[0.06] rounded-2xl p-4 border border-white/10">
+              <div className="bg-latitud-white/[0.06] rounded-2xl p-4 border border-latitud-white/10">
                 <div className="grid grid-cols-3 gap-3 text-center mb-3">
                   <div>
-                    <span className="text-[11px] text-white font-semibold leading-tight block">{client.budget_range || '—'}</span>
-                    <span className="text-[9px] text-white/40">Presupuesto</span>
+                    <span className="text-[11px] text-latitud-white font-semibold leading-tight block">{client.budget_range || '—'}</span>
+                    <span className="text-[9px] text-latitud-gray">Presupuesto</span>
                   </div>
                   <div>
                     <MapPin size={14} className="text-latitud-orange mx-auto mb-0.5" />
-                    <span className="text-[11px] text-white font-semibold leading-tight block truncate">{(client.favorite_zones || []).slice(0, 2).join(', ') || '—'}</span>
-                    <span className="text-[9px] text-white/40">Zonas</span>
+                    <span className="text-[11px] text-latitud-white font-semibold leading-tight block truncate">{(client.favorite_zones || []).slice(0, 2).join(', ') || '—'}</span>
+                    <span className="text-[9px] text-latitud-gray">Zonas</span>
                   </div>
                   <div>
                     <Heart size={14} className="text-latitud-orange mx-auto mb-0.5" />
-                    <span className="text-[11px] text-white font-semibold leading-tight block">{likedProperties.length} guardadas</span>
-                    <span className="text-[9px] text-white/40">Selección</span>
+                    <span className="text-[11px] text-latitud-white font-semibold leading-tight block">{likedProperties.length} guardadas</span>
+                    <span className="text-[9px] text-latitud-gray">Selección</span>
                   </div>
                 </div>
                 <button
                   onClick={() => setShowTour(true)}
-                  className="w-full mt-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
+                  className="w-full mt-1 py-3 rounded-xl bg-latitud-orange text-[color:var(--brand-accent-fg)] font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
                 >
                   <Calendar size={16} /> Solicitar recorrido
                 </button>
@@ -349,12 +349,12 @@ export default function Favorites() {
 
             {likedProperties.length === 0 ? (
               <div className="text-center py-20">
-                <Heart size={40} className="text-white/20 mx-auto mb-3" />
-                <p className="text-white/70 text-base mb-2">Tu selección está vacía.</p>
-                <p className="text-white/40 text-sm mb-6 max-w-xs mx-auto">
+                <Heart size={40} className="text-latitud-gray mx-auto mb-3" />
+                <p className="text-latitud-white/70 text-base mb-2">Tu selección está vacía.</p>
+                <p className="text-latitud-gray text-sm mb-6 max-w-xs mx-auto">
                   Guarda las casas que te gusten y solicita un recorrido cuando estés listo.
                 </p>
-                <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
+                <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-[color:var(--brand-accent-fg)] px-6 py-3 rounded-xl text-sm font-semibold">
                   Descubrir propiedades
                 </button>
               </div>
@@ -375,12 +375,12 @@ export default function Favorites() {
           <>
             {dislikedProperties.length === 0 ? (
               <div className="text-center py-20">
-                <Heart size={40} className="text-white/20 mx-auto mb-3" />
-                <p className="text-white/70 text-base mb-2">No has descartado propiedades.</p>
-                <p className="text-white/40 text-sm mb-6 max-w-xs mx-auto">
+                <Heart size={40} className="text-latitud-gray mx-auto mb-3" />
+                <p className="text-latitud-white/70 text-base mb-2">No has descartado propiedades.</p>
+                <p className="text-latitud-gray text-sm mb-6 max-w-xs mx-auto">
                   Las propiedades que descartes aparecerán aquí y podrás devolverlas a tu selección.
                 </p>
-                <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
+                <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-[color:var(--brand-accent-fg)] px-6 py-3 rounded-xl text-sm font-semibold">
                   Descubrir propiedades
                 </button>
               </div>
@@ -393,8 +393,8 @@ export default function Favorites() {
         {/* También te pueden gustar — in-zone recommendations */}
         {activeTab === 'liked' && alsoLike.length > 0 && (
           <div className="pt-6">
-            <h3 className="font-heading text-lg text-white mb-1">También te pueden gustar</h3>
-            <p className="text-xs text-white/40 mb-4">Basado en tus zonas, presupuesto y preferencias</p>
+            <h3 className="font-heading text-lg text-latitud-white mb-1">También te pueden gustar</h3>
+            <p className="text-xs text-latitud-gray mb-4">Basado en tus zonas, presupuesto y preferencias</p>
             <div className="flex gap-3 overflow-x-auto no-scrollbar -mx-4 px-4 pb-2">
               {alsoLike.map(p => (
                 <PropertyThumb key={p.id} property={p} matchPercentage={p._match} />
@@ -405,7 +405,7 @@ export default function Favorites() {
 
         {activeTab === 'liked' && likedProperties.length === 0 && (
           <div className="pt-6">
-            <button onClick={() => navigate('/discover')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-white/15 text-white/70 font-medium text-sm">
+            <button onClick={() => navigate('/discover')} className="w-full flex items-center justify-center gap-2 py-3 rounded-xl border border-latitud-white/15 text-latitud-white/70 font-medium text-sm">
               <Compass size={15} /> Seguir explorando
             </button>
           </div>

@@ -5,6 +5,7 @@ import { ArrowRight, Sparkles, BarChart3, Users, Calendar, LayoutDashboard, Pale
 import LatitudLogo from '@/components/LatitudLogo';
 import { validateClientSession, needsOnboarding } from '@/lib/clientSession';
 import { useBrand } from '@/lib/BrandSettingsContext';
+import { contrastTextColor } from '@/lib/contrastColor';
 import { base44 } from '@/api/base44Client';
 import { isDemoSkipAccess, ensureDemoClient } from '@/lib/demoAccess';
 
@@ -83,8 +84,8 @@ export default function Welcome() {
             animate={{ scale: 1 }}
             transition={{ duration: 8, ease: 'easeOut' }}
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-latitud-black via-latitud-black/85 to-latitud-black/40" />
-          <div className="absolute inset-0 bg-gradient-to-r from-latitud-black/70 to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-overlay via-overlay/85 to-overlay/40" />
+          <div className="absolute inset-0 bg-gradient-to-r from-overlay/70 to-transparent" />
         </div>
 
         <div className="relative z-10 min-h-screen flex flex-col px-6">
@@ -104,7 +105,7 @@ export default function Welcome() {
               {brand.tagline_secundaria || 'Una experiencia privada que entiende tu estilo de vida, tu presupuesto y tu momento — para mostrarte solo propiedades a tu altura.'}
             </p>
 
-            <motion.button whileTap={{ scale: 0.97 }} onClick={handleEntry} className="w-full text-latitud-black font-semibold py-4 rounded-xl text-lg active:bg-[#1A1A1A] transition-colors flex items-center justify-center gap-2 accent-glow" style={{ backgroundColor: brand.accent_color }}>
+            <motion.button whileTap={{ scale: 0.97 }} onClick={handleEntry} className="w-full font-semibold py-4 rounded-xl text-lg transition-colors flex items-center justify-center gap-2 accent-glow" style={{ backgroundColor: brand.accent_color, color: contrastTextColor(brand.accent_color) }}>
               Encontrar mi match <ArrowRight size={20} />
             </motion.button>
 
@@ -132,7 +133,7 @@ export default function Welcome() {
       <div className="bg-[#FFFDF8] px-6 py-12">
         <div className="max-w-2xl mx-auto">
           <p className="text-xs font-semibold tracking-[0.2em] uppercase mb-2" style={{ color: brand.accent_color }}>Para equipos inmobiliarios</p>
-          <h2 className="font-heading text-2xl md:text-3xl text-latitud-black leading-tight mb-3">
+          <h2 className="font-heading text-2xl md:text-3xl text-[#1A1A1A] leading-tight mb-3">
             Convierte la búsqueda de propiedades en intención de compra calificada.
           </h2>
           <p className="text-latitud-gray text-sm leading-relaxed mb-6">
@@ -145,7 +146,7 @@ export default function Welcome() {
               return (
                 <div key={v.title} className="bg-white rounded-2xl p-4 shadow-sm border" style={{ borderColor: brand.accent_color + '26' }}>
                   <Icon size={20} className="mb-2" style={{ color: brand.accent_color }} />
-                  <p className="text-sm font-semibold text-latitud-black">{v.title}</p>
+                  <p className="text-sm font-semibold text-[#1A1A1A]">{v.title}</p>
                   <p className="text-xs text-latitud-gray mt-0.5">{v.desc}</p>
                 </div>
               );
@@ -153,7 +154,7 @@ export default function Welcome() {
           </div>
 
           <Link to="/onboarding">
-            <button className="w-full bg-latitud-black text-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2">
+            <button className="w-full bg-latitud-black text-latitud-white font-semibold py-4 rounded-xl flex items-center justify-center gap-2">
               Solicitar una demo <ArrowRight size={18} />
             </button>
           </Link>

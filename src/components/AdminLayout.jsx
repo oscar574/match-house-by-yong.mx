@@ -4,6 +4,8 @@ import { LayoutDashboard, Users, Building2, Calendar, ClipboardList, LogOut, Men
 import { base44 } from '@/api/base44Client';
 import { brandConfig } from '@/lib/brandConfig';
 import LatitudLogo from '@/components/LatitudLogo';
+import { useBrand } from '@/lib/BrandSettingsContext';
+import { contrastTextColor } from '@/lib/contrastColor';
 
 const NAV_ITEMS = [
   { label: 'Dashboard', path: '/admin', icon: LayoutDashboard },
@@ -19,9 +21,10 @@ const NAV_ITEMS = [
 export default function AdminLayout() {
   const location = useLocation();
   const [menuOpen, setMenuOpen] = useState(false);
+  const brand = useBrand();
 
   return (
-    <div className="min-h-screen bg-latitud-light">
+    <div className="min-h-screen bg-latitud-light" style={{ '--brand-bg': '#050505', '--brand-text': '#FFFDF8', '--brand-surface': '#F8F5EF', '--brand-muted': '#8A7A63', '--brand-accent': brand.accent_color || '#C9A45C', '--brand-accent-fg': contrastTextColor(brand.accent_color || '#C9A45C') }}>
       {/* Mobile header */}
       <div className="bg-latitud-black px-4 py-3 flex items-center justify-between sticky top-0 z-40">
         <LatitudLogo variant="white" size="sm" />

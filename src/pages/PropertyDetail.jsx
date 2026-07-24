@@ -229,7 +229,7 @@ export default function PropertyDetail() {
         </div>
         <p className="font-heading text-lg text-latitud-black mb-1">Esta propiedad ya no está disponible</p>
         <p className="text-sm text-latitud-gray mb-6">Explora otras casas que se ajusten a ti.</p>
-        <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-white px-6 py-3 rounded-xl text-sm font-semibold">
+        <button onClick={() => navigate('/discover')} className="bg-latitud-orange text-[color:var(--brand-accent-fg)] px-6 py-3 rounded-xl text-sm font-semibold">
           Descubrir propiedades
         </button>
       </div>
@@ -281,7 +281,7 @@ export default function PropertyDetail() {
 
         {/* Operation badge */}
         <div className="absolute top-24 left-4" data-no-swipe>
-          <span className="bg-latitud-orange text-latitud-black text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
+          <span className="bg-latitud-orange text-[color:var(--brand-accent-fg)] text-xs font-semibold px-3 py-1.5 rounded-full shadow-lg">
             {property.operation_type}
           </span>
         </div>
@@ -488,7 +488,7 @@ export default function PropertyDetail() {
         </a>
         <button
           onClick={() => setShowVisit(true)}
-          className="flex-1 py-3 rounded-xl bg-latitud-orange text-white font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
+          className="flex-1 py-3 rounded-xl bg-latitud-orange text-[color:var(--brand-accent-fg)] font-semibold text-sm flex items-center justify-center gap-2 accent-glow"
         >
           <Calendar size={16} />
           Solicitar visita de esta propiedad
